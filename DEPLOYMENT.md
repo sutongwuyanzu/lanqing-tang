@@ -1,158 +1,79 @@
-# 兰清堂 — 部署与配置指南
+# 兰清堂 — Cloudflare Pages 部署指南
 
-## 一、部署到 Cloudflare Pages
+## 🚀 一键部署（推荐，3分钟搞定）
 
-### 方法 A：Git 连接（推荐，自动部署）
+代码已推送到 GitHub：**https://github.com/sutongwuyanzu/lanqing-tang**
 
-1. **推送代码到 GitHub**
-   ```bash
-   cd lanqing-tang
-   git init
-   git add .
-   git commit -m "兰清堂初始版本"
-   git remote add origin https://github.com/你的用户名/lanqing-tang.git
-   git push -u origin main
+### 步骤 1：在 Cloudflare 创建项目
+
+1. 打开 https://dash.cloudflare.com → 登录你的账号
+2. 左侧菜单点 **Workers & Pages**
+3. 点 **创建应用程序** → **Pages** → **连接到 Git**
+4. 授权 GitHub，选择仓库 **`lanqing-tang`**
+5. 构建设置：
    ```
+   框架预设：       Next.js（静态导出） 或 None
+   构建命令：       npm run build
+   构建输出目录：   out
+   ```
+6. 环境变量（展开"环境变量"添加）：
+   ```
+   NODE_VERSION = 20
+   ```
+7. 点 **保存并部署**
 
-2. **在 Cloudflare 创建项目**
-   - 登录 https://dash.cloudflare.com
-   - 左侧菜单 → **Workers & Pages** → **创建应用程序** → **Pages** → **连接到 Git**
-   - 选择你的 GitHub 仓库 `lanqing-tang`
-   - 构建配置：
-     ```
-     框架预设：Next.js
-     构建命令：npm run build
-     输出目录：.next  （Cloudflare 会自动识别）
-     ```
-   - 环境变量（可选）：`NODE_VERSION = 20`
-   - 点击 **保存并部署**
+### 步骤 2：等待构建
 
-3. **等待部署完成**
-   - Cloudflare 会自动构建
-   - 完成后获得地址：`https://lanqing-tang.pages.dev`
+- Cloudflare 会自动 `npm install` + `npm run build`
+- 约 2-3 分钟完成
+- 完成后获得地址：**https://lanqing-tang.pages.dev**
 
-### 方法 B：Wrangler CLI 手动部署
+### 步骤 3：（可选）绑定自定义域名
+
+1. Pages 项目 → **自定义域** → **设置自定义域**
+2. 输入你的域名（如 `lanqing.xxx.com`）
+3. 按提示添加 CNAME 记录
+4. Cloudflare 会自动配置 SSL 证书
+
+---
+
+## 📝 项目说明
+
+- **框架**：Next.js 16（静态导出模式 `output: export`）
+- **输出目录**：`out/`（纯静态 HTML/CSS/JS）
+- **所有功能**：纯前端，无需服务器
+- **数据存储**：localStorage（浏览器本地）
+
+### 页面清单
+| 页面 | 路径 | 功能 |
+|------|------|------|
+| 首页 | `/` | 四大善门入口 |
+| 关帝灵签 | `/lingqian` | 100支签文 |
+| 周公解梦 | `/dream` | 双体系解读 |
+| 祈福点灯 | `/pray` | 支付宝收款 |
+| 八字起名 | `/bazi` | 排盘+起名 |
+| 登录 | `/login` | 模拟登录 |
+| 个人中心 | `/profile` | 功德记录 |
+
+---
+
+## 🔧 本地开发
 
 ```bash
-# 安装 wrangler
-npm install -g wrangler
-
-# 登录
-wrangler login
-
-# 构建项目
-npm run build
-
-# 部署
-wrangler pages deploy .next --project-name lanqing-tang
-```
-
-### 绑定自定义域名
-
-1. Cloudflare Dashboard → Pages → 你的项目 → **自定义域**
-2. 添加域名（如 `lanqing.你的域名.com`）
-3. 按提示添加 CNAME 记录即可
-
----
-
-## 二、支付宝收款配置
-
-### 步骤 1：获取支付宝收款码
-
-1. 打开 **支付宝 App** → **收付款** → **二维码收款**
-2. 保存你的收款二维码图片
-
-### 步骤 2：放入项目
-
-将收款码图片重命名为 `alipay-qr.png`，放到：
-```
-lanqing-tang/public/alipay-qr.png
-```
-
-这样祈福页面的扫码区域就会自动显示你的收款码。
-
-### 步骤 3：（可选）配置支付宝跳转链接
-
-如果你想点击按钮直接拉起支付宝付款：
-
-1. 打开支付宝 App → 我的 → 收款 → 获取收款链接
-2. 打开 `app/pray/page.tsx`
-3. 找到这行：
-   ```typescript
-   const ALIPAY_LINK = "";
-   ```
-4. 改为你的链接：
-   ```typescript
-   const ALIPAY_LINK = "https://qr.alipay.com/你的收款码链接";
-   ```
-
-保存后页面上会出现 **"打开支付宝付款"** 按钮。
-
----
-
-## 三、本地开发
-
-```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-
-# 访问 http://localhost:3000
-```
-
-## 四、构建生产版本
-
-```bash
-npm run build
-npm run start
+npm install        # 安装依赖
+npm run dev        # 开发模式 http://localhost:3000
+npm run build      # 构建到 out/ 目录
 ```
 
 ---
 
-## 五、目录结构说明
+## ❓ 常见问题
 
-```
-lanqing-tang/
-├── app/
-│   ├── layout.tsx          # 全局布局
-│   ├── page.tsx            # 首页
-│   ├── lingqian/page.tsx   # 关帝灵签
-│   ├── dream/page.tsx      # 周公解梦
-│   ├── pray/page.tsx       # 祈福点灯（含支付宝付款）
-│   ├── bazi/page.tsx       # 八字起名
-│   ├── login/page.tsx      # 登录
-│   └── profile/page.tsx    # 个人中心
-├── components/
-│   ├── Navbar.tsx          # 顶部导航
-│   └── BottomNav.tsx       # 移动端底部导航
-├── lib/
-│   ├── lots-data.ts        # 100支灵签数据
-│   ├── dream-data.ts       # 解梦数据
-│   ├── bazi-utils.ts       # 八字计算
-│   ├── naming-data.ts      # 起名字库
-│   └── supabase.ts         # Supabase 客户端
-├── public/
-│   ├── manifest.json       # PWA 配置
-│   ├── icon.svg            # 应用图标
-│   └── alipay-qr.png       # ← 你的支付宝收款码放这里
-└── package.json
-```
+**Q: 构建失败怎么办？**
+A: 检查 Cloudflare 构建日志，确认 NODE_VERSION=20 已设置。
 
----
+**Q: 页面打开是 404？**
+A: 确认构建输出目录填的是 `out`（不是 `.next`）。
 
-## 六、注意事项
-
-1. **支付宝收款说明**：当前是"扫码转账"方案（个人收款），金额需用户手动输入。如需自动填金额，需申请支付宝商户支付接口。
-
-2. **Supabase 后端**（可选）：如需启用用户系统和数据云端存储，在 Supabase 创建项目后，配置环境变量：
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
-   ```
-
-3. **专业数据替换**：
-   - 灵签：已是完整 100 支（你提供的真实数据）
-   - 解梦：当前 20 条，可扩充到 80+
-   - 起名字库：当前示例数据，可替换为更专业的内容
+**Q: 想更新网站？**
+A: 修改代码后 `git push`，Cloudflare 会自动重新构建部署。
