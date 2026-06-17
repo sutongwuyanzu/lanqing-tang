@@ -287,6 +287,16 @@ export default function PrayPage() {
             {wish && <div className="mb-4 rounded-lg bg-bg-input p-3 text-sm text-text-secondary">💭 {wish}</div>}
             <button onClick={resetForm} className="btn-secondary w-full">再点一盏灯</button>
           </div>
+          <div className="mt-4 flex justify-center">
+            <ShareButton label="分享善缘，得福报" />
+          </div>
+        </div>
+      )}
+
+      {/* 分享按钮（表单阶段） */}
+      {step === "form" && (
+        <div className="mt-6 flex justify-center">
+          <ShareButton label="分享善缘，得福报" />
         </div>
       )}
     </div>
