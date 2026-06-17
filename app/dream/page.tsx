@@ -7,28 +7,32 @@ import { ShareButton } from "@/components/ShareButton";
 
 function getLuckColor(luck: string): string {
   switch (luck) {
+    case "上上": return "bg-red-500/20 text-red-400 border-red-500/30";
+    case "上吉": case "上签": return "bg-gold/20 text-gold border-gold/30";
+    case "中吉": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+    case "中平": return "bg-gray-500/20 text-gray-300 border-gray-500/30";
+    case "中下": case "下签": return "bg-gray-700/20 text-gray-400 border-gray-600/30";
     case "大吉": case "吉": return "bg-red-500/20 text-red-400 border-red-500/30";
-    case "中吉": return "bg-gold/20 text-gold border-gold/30";
     case "平": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    case "小凶": case "凶": return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+    case "小凶": case "凶": return "bg-gray-700/20 text-gray-400 border-gray-600/30";
     default: return "bg-gold/20 text-gold border-gold/30";
   }
 }
 
-// 热门梦境（按搜索热度排序）
+// 热门梦境（按搜索热度排序，吉凶标签：上上/上吉/上签/中吉/中平/中下/下签）
 const popularDreams = [
-  { keyword: "梦见蛇", luck: "吉", desc: "主财运、智慧" },
-  { keyword: "梦见飞翔", luck: "大吉", desc: "事业突破" },
+  { keyword: "梦见蛇", luck: "上吉", desc: "主财运、智慧" },
+  { keyword: "梦见飞翔", luck: "上上", desc: "事业突破" },
   { keyword: "梦见水", luck: "中吉", desc: "财运波动" },
-  { keyword: "梦见掉牙", luck: "平", desc: "关注家人健康" },
-  { keyword: "梦见死去的亲人", luck: "吉", desc: "旧去新来" },
-  { keyword: "梦见怀孕", luck: "大吉", desc: "新事将至" },
-  { keyword: "梦见结婚", luck: "大吉", desc: "感情美满" },
-  { keyword: "梦见考试", luck: "平", desc: "面临考验" },
-  { keyword: "梦见钱", luck: "大吉", desc: "财运亨通" },
+  { keyword: "梦见掉牙", luck: "中平", desc: "关注家人健康" },
+  { keyword: "梦见死去的亲人", luck: "上吉", desc: "旧去新来" },
+  { keyword: "梦见怀孕", luck: "上上", desc: "新事将至" },
+  { keyword: "梦见结婚", luck: "上上", desc: "感情美满" },
+  { keyword: "梦见考试", luck: "中平", desc: "面临考验" },
+  { keyword: "梦见钱", luck: "上上", desc: "财运亨通" },
   { keyword: "梦见火", luck: "中吉", desc: "事业兴旺" },
-  { keyword: "梦见鱼", luck: "吉", desc: "年年有余" },
-  { keyword: "梦见鬼", luck: "平", desc: "心神不宁" },
+  { keyword: "梦见鱼", luck: "上吉", desc: "年年有余" },
+  { keyword: "梦见鬼", luck: "中下", desc: "心神不宁" },
 ];
 
 export default function DreamPage() {
