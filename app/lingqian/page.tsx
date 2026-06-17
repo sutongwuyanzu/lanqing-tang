@@ -2,224 +2,243 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { allLots, Lot } from "@/lib/lots-data";
-import { Sparkles, Clock, RotateCcw, ChevronDown } from "lucide-react";
+import { Sparkles, ChevronDown, Trash2, History, X, Lock, Check } from "lucide-react";
 
-const COOLDOWN_MS = 10 * 60 * 1000; // 10分钟冷却
+const FREE_DAILY = 2;
+const EXTRA_PRICE = 3.9;
+
+interface LotRecord {
+  id: number;
+  level: string;
+  title: string;
+  wish: string;
+  time: string;
+}
+
+function getTodayKey() {
+  const d = new Date();
+  return `lqt_draw_${d.getFullYear()}_${d.getMonth() + 1}_${d.getDate()}`;
+}
 
 function getLevelColor(level: string): string {
-  if (level.includes("上上")) return "bg-red-500/20 text-red-400 border-red-500/30";
+  if (level.includes("大吉") || level.includes("上上")) return "bg-red-500/20 text-red-400 border-red-500/30";
   if (level.includes("上") || level.includes("吉")) return "bg-gold/20 text-gold border-gold/30";
   if (level.includes("中")) return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+  if (level.includes("末")) return "bg-gray-500/20 text-gray-400 border-gray-500/30";
   return "bg-gray-500/20 text-gray-400 border-gray-500/30";
 }
 
 export default function LingqianPage() {
   const [isShaking, setIsShaking] = useState(false);
   const [result, setResult] = useState<Lot | null>(null);
-  const [remaining, setRemaining] = useState(0);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [wish, setWish] = useState("");
+  const [todayCount, setTodayCount] = useState(0);
+  const [showPay, setShowPay] = useState(false);
+  const [history, setHistory] = useState<LotRecord[]>([]);
 
-  // 冷却倒计时
   useEffect(() => {
-    const lastDraw = localStorage.getItem("lqt_lastLotTime");
-    if (lastDraw) {
-      const diff = Date.now() - parseInt(lastDraw);
-      if (diff < COOLDOWN_MS) {
-        setRemaining(Math.ceil((COOLDOWN_MS - diff) / 1000));
-      } else {
-        localStorage.removeItem("lqt_lastLotTime");
-      }
-    }
+    const count = parseInt(localStorage.getItem(getTodayKey()) || "0");
+    setTodayCount(count);
+    const h = JSON.parse(localStorage.getItem("lqt_history") || "[]");
+    setHistory(h);
   }, []);
 
-  useEffect(() => {
-    if (remaining <= 0) return;
-    const timer = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          localStorage.removeItem("lqt_lastLotTime");
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [remaining]);
+  const remainingFree = Math.max(0, FREE_DAILY - todayCount);
 
-  const drawLot = useCallback(() => {
-    if (remaining > 0 || isShaking) return;
-
+  const doDraw = useCallback(() => {
     setIsShaking(true);
     setResult(null);
     setIsRevealed(false);
-
-    // 摇签动画1.5秒
     setTimeout(() => {
       const lot = allLots[Math.floor(Math.random() * allLots.length)];
       setResult(lot);
       setIsShaking(false);
-      localStorage.setItem("lqt_lastLotTime", Date.now().toString());
-      setRemaining(Math.floor(COOLDOWN_MS / 1000));
+      const record: LotRecord = {
+        id: lot.id,
+        level: lot.level,
+        title: lot.title,
+        wish: wish || "（未填写）",
+        time: new Date().toLocaleString("zh-CN"),
+      };
+      const newHistory = [record, ...history].slice(0, 50);
+      setHistory(newHistory);
+      localStorage.setItem("lqt_history", JSON.stringify(newHistory));
+      const newCount = todayCount + 1;
+      setTodayCount(newCount);
+      localStorage.setItem(getTodayKey(), newCount.toString());
     }, 1500);
-  }, [remaining, isShaking]);
+  }, [todayCount, wish, history]);
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
+  const handleDraw = () => {
+    if (remainingFree > 0) {
+      doDraw();
+    } else {
+      setShowPay(true);
+    }
+  };
+
+  const handlePaid = () => {
+    setShowPay(false);
+    doDraw();
+  };
+
+  const deleteRecord = (idx: number) => {
+    const newHistory = history.filter((_, i) => i !== idx);
+    setHistory(newHistory);
+    localStorage.setItem("lqt_history", JSON.stringify(newHistory));
   };
 
   return (
     <div className="page-container">
-      {/* 标题 */}
-      <div className="mb-8 text-center">
+      <div className="mb-6 text-center">
         <h1 className="mb-2 text-3xl font-bold text-gold">关帝灵签</h1>
         <p className="text-sm text-text-secondary">心诚则灵，一签一事</p>
-        <p className="mt-1 text-xs text-text-muted">
-          共 {allLots.length} 支签文 · 出自传统签谱
-        </p>
       </div>
 
-      {/* 抽签区域 */}
-      <div className="card-classic mb-6 overflow-hidden p-6 md:p-8">
-        {/* 签筒 */}
+      <div className="card-classic mb-4 p-5">
+        <label className="mb-2 block text-sm font-medium text-gold">✍️ 写下心愿，心诚则灵</label>
+        <textarea
+          value={wish}
+          onChange={(e) => setWish(e.target.value)}
+          rows={2}
+          placeholder="例如：愿事业顺利、家人平安..."
+          className="input-classic resize-none"
+        />
+      </div>
+
+      <div className="card-classic mb-4 overflow-hidden p-6">
         <div className="flex flex-col items-center">
-          {/* 签筒 SVG */}
-          <div
-            className={`mb-6 transition-transform ${
-              isShaking ? "animate-shake" : ""
-            }`}
-          >
-            <div className="relative flex h-48 w-24 flex-col items-center">
-              {/* 签筒身体 */}
-              <div className="absolute bottom-0 left-1/2 h-40 w-20 -translate-x-1/2 rounded-b-2xl bg-gradient-to-b from-amber-800 to-amber-950 border border-amber-700/50" />
-              {/* 签筒口 */}
-              <div className="absolute left-1/2 top-0 h-5 w-24 -translate-x-1/2 rounded-t-lg bg-gradient-to-b from-amber-700 to-amber-800 border border-amber-600/50" />
-              {/* 签 */}
+          <div className={`mb-4 transition-transform ${isShaking ? "animate-shake" : ""}`}>
+            <div className="relative flex h-40 w-20 flex-col items-center">
+              <div className="absolute bottom-0 left-1/2 h-32 w-16 -translate-x-1/2 rounded-b-2xl bg-gradient-to-b from-amber-800 to-amber-950 border border-amber-700/50" />
+              <div className="absolute left-1/2 top-0 h-4 w-20 -translate-x-1/2 rounded-t-lg bg-amber-800 border border-amber-600/50" />
               {!result && (
                 <>
-                  <div className="absolute left-[38%] top-2 h-28 w-1.5 -translate-x-1/2 rounded-t bg-yellow-200/80" />
-                  <div className="absolute left-[48%] top-1 h-32 w-1.5 -translate-x-1/2 rounded-t bg-yellow-100/80" />
-                  <div className="absolute left-[58%] top-3 h-26 w-1.5 -translate-x-1/2 rounded-t bg-yellow-200/60" />
-                  <div className="absolute left-[52%] top-0 h-34 w-1.5 -translate-x-1/2 rounded-t bg-yellow-300/70" />
+                  <div className="absolute left-[38%] top-2 h-24 w-1.5 -translate-x-1/2 rounded-t bg-yellow-200/80" />
+                  <div className="absolute left-[48%] top-1 h-28 w-1.5 -translate-x-1/2 rounded-t bg-yellow-100/80" />
+                  <div className="absolute left-[58%] top-3 h-22 w-1.5 -translate-x-1/2 rounded-t bg-yellow-200/60" />
                 </>
               )}
-              {/* 底座 */}
-              <div className="absolute bottom-0 left-1/2 h-4 w-24 -translate-x-1/2 rounded-b-xl bg-amber-900 border border-amber-800/50" />
             </div>
           </div>
 
-          {/* 抽签按钮 */}
+          <div className="mb-4 flex items-center gap-2 text-sm">
+            {remainingFree > 0 ? (
+              <span className="rounded-full bg-green-500/20 px-3 py-1 text-green-400">
+                今日剩余免费 {remainingFree} 次
+              </span>
+            ) : (
+              <span className="rounded-full bg-gold/20 px-3 py-1 text-gold">
+                免费次数已用完 · 加抽 ¥{EXTRA_PRICE}/次
+              </span>
+            )}
+          </div>
+
           <button
-            onClick={drawLot}
-            disabled={remaining > 0 || isShaking}
+            onClick={handleDraw}
+            disabled={isShaking}
             className="btn-primary flex w-full max-w-xs items-center justify-center gap-2 text-lg"
           >
             {isShaking ? (
-              <>
-                <Sparkles className="h-5 w-5 animate-spin" />
-                正在摇签...
-              </>
-            ) : remaining > 0 ? (
-              <>
-                <Clock className="h-5 w-5" />
-                冷却中 {formatTime(remaining)}
-              </>
+              <><Sparkles className="h-5 w-5 animate-spin" />正在摇签...</>
+            ) : remainingFree > 0 ? (
+              <><Sparkles className="h-5 w-5" />诚心抽一签（免费）</>
             ) : (
-              <>
-                <Sparkles className="h-5 w-5" />
-                诚心抽一签
-              </>
+              <><Sparkles className="h-5 w-5" />加抽一签 ¥{EXTRA_PRICE}</>
             )}
           </button>
         </div>
       </div>
 
-      {/* 签文结果 */}
       {result && !isShaking && (
-        <div
-          className={`card-classic overflow-hidden ${
-            isRevealed ? "animate-fade-in" : ""
-          }`}
-        >
-          {/* 签文头部 */}
+        <div className={`card-classic overflow-hidden ${isRevealed ? "animate-fade-in" : ""}`}>
           <div className="border-b border-border bg-bg-elevated p-6 text-center">
             <p className="mb-1 text-xs text-text-muted">关圣帝君灵签</p>
             <h2 className="mb-3 text-xl font-bold text-gold">{result.title}</h2>
-            <span
-              className={`inline-block rounded-full border px-3 py-1 text-xs font-medium ${getLevelColor(
-                result.level
-              )}`}
-            >
+            <span className={`inline-block rounded-full border px-3 py-1 text-xs font-medium ${getLevelColor(result.level)}`}>
               第{result.id}签 · {result.level}
             </span>
+            {wish && <p className="mt-3 text-xs text-text-secondary">所求：{wish}</p>}
           </div>
-
-          {/* 签诗 */}
           <div className="p-6">
             <div className="divider-ornament mb-4 text-xs">✦ 签诗 ✦</div>
-            <div className="bg-bg-input rounded-xl p-5 text-center leading-loose text-text-primary">
-              {result.poem.split("\n").map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
+            <div className="rounded-xl bg-bg-input p-5 text-center leading-loose text-text-primary">
+              {result.poem.split("\n").map((line, i) => (<p key={i}>{line}</p>))}
             </div>
           </div>
-
-          {/* 签解详情 */}
           {!isRevealed ? (
             <div className="p-6 text-center">
-              <button
-                onClick={() => setIsRevealed(true)}
-                className="btn-secondary inline-flex items-center gap-2"
-              >
-                <ChevronDown className="h-4 w-4" />
-                查看详解
+              <button onClick={() => setIsRevealed(true)} className="btn-secondary inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4" />查看详解
               </button>
             </div>
           ) : (
             <div className="animate-fade-in-up space-y-6 p-6">
-              {/* 签解 */}
               <div>
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gold">
-                  <span className="inline-block h-1 w-4 rounded bg-gold" />
-                  签解
-                </h3>
-                <p className="leading-relaxed text-text-secondary">
-                  {result.explanation}
-                </p>
+                <h3 className="mb-2 text-sm font-bold text-gold">签解</h3>
+                <p className="leading-relaxed text-text-secondary">{result.explanation}</p>
               </div>
-
-              {/* 师父开示 */}
               <div>
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gold">
-                  <span className="inline-block h-1 w-4 rounded bg-gold" />
-                  师父开示
-                </h3>
-                <p className="leading-relaxed text-text-secondary">
-                  {result.kaishi}
-                </p>
+                <h3 className="mb-2 text-sm font-bold text-gold">师父开示</h3>
+                <p className="leading-relaxed text-text-secondary">{result.kaishi}</p>
               </div>
-
-              {/* 行动建议 */}
               <div className="rounded-xl border border-gold/20 bg-gold/5 p-4">
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gold">
-                  <span className="inline-block h-1 w-4 rounded bg-gold" />
-                  行动建议
-                </h3>
-                <p className="leading-relaxed text-text-primary">
-                  {result.advice}
-                </p>
+                <h3 className="mb-2 text-sm font-bold text-gold">行动建议</h3>
+                <p className="leading-relaxed text-text-primary">{result.advice}</p>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* 底部提示 */}
+      {history.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <History className="h-4 w-4 text-gold" />
+            <h2 className="text-sm font-bold text-gold">求签记录（{history.length}）</h2>
+          </div>
+          <div className="space-y-2">
+            {history.map((record, idx) => (
+              <div key={idx} className="card-classic flex items-center justify-between p-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded border px-1.5 py-0.5 text-[10px] ${getLevelColor(record.level)}`}>{record.level}</span>
+                    <span className="truncate text-sm text-text-primary">{record.title}</span>
+                  </div>
+                  <div className="mt-0.5 truncate text-xs text-text-muted">{record.wish} · {record.time}</div>
+                </div>
+                <button onClick={() => deleteRecord(idx)} className="ml-2 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-red-500/10 hover:text-red-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showPay && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+          <div className="animate-fade-in-up relative w-full max-w-sm rounded-2xl border border-gold/20 bg-bg-card p-6 text-center">
+            <button onClick={() => setShowPay(false)} className="absolute right-3 top-3 text-text-muted hover:text-text-primary">
+              <X className="h-5 w-5" />
+            </button>
+            <Lock className="mx-auto mb-3 h-10 w-10 text-gold" />
+            <h3 className="mb-2 text-xl font-bold text-gold">加抽灵签</h3>
+            <p className="mb-4 text-sm text-text-secondary">今日免费次数已用完，加抽一次 ¥{EXTRA_PRICE}</p>
+            <div className="mx-auto mb-4 h-48 w-48 overflow-hidden rounded-xl border border-border bg-white p-2">
+              <img src="/alipay-qr.png" alt="收款码" className="h-full w-full object-contain" onError={(e) => { const t = e.currentTarget; t.style.display = "none"; if (t.parentElement) { t.parentElement.innerHTML = '<div class="flex h-full w-full items-center justify-center text-gray-400 text-xs">收款码加载中</div>'; } }} />
+            </div>
+            <p className="mb-3 text-sm text-blue-400">支付宝扫码付款 ¥{EXTRA_PRICE}</p>
+            <button onClick={handlePaid} className="btn-primary w-full">
+              <span className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />我已完成付款</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mt-6 text-center">
-        <p className="text-xs text-text-muted">
-          每10分钟可抽一次 · 仅供娱乐参考，不可迷信
-        </p>
+        <p className="text-xs text-text-muted">每日免费 {FREE_DAILY} 次 · 仅供娱乐参考</p>
       </div>
     </div>
   );

@@ -1,46 +1,59 @@
 "use client";
 
 import { useState } from "react";
-import {
-  calculateBazi,
-  BaziResult,
-  tianGan,
-  diZhi,
-} from "@/lib/bazi-utils";
-import { generateNameSuggestions, NameSuggestion } from "@/lib/naming-data";
-import { Baby, Sparkles, Copy, Check } from "lucide-react";
+import { calculateBazi, BaziResult } from "@/lib/bazi-utils";
+import { generateNameSuggestionsV2, NameSuggestionV2 } from "@/lib/naming-data";
+import { Baby, Sparkles, Copy, Check, Lock, BookOpen, Palette, Music, FileText, PenTool, X } from "lucide-react";
 
-const wuXingColors: Record<string, string> = {
-  "木": "text-green-400",
-  "火": "text-red-400",
-  "土": "text-yellow-600",
-  "金": "text-yellow-300",
-  "水": "text-blue-400",
-};
+const wuXingColors: Record<string, string> = { "木": "text-green-400", "火": "text-red-400", "土": "text-yellow-600", "金": "text-yellow-300", "水": "text-blue-400" };
+const wuXingBg: Record<string, string> = { "木": "bg-green-500/10 border-green-500/30", "火": "bg-red-500/10 border-red-500/30", "土": "bg-yellow-700/10 border-yellow-700/30", "金": "bg-yellow-500/10 border-yellow-500/30", "水": "bg-blue-500/10 border-blue-500/30" };
 
-const wuXingBg: Record<string, string> = {
-  "木": "bg-green-500/10 border-green-500/30",
-  "火": "bg-red-500/10 border-red-500/30",
-  "土": "bg-yellow-700/10 border-yellow-700/30",
-  "金": "bg-yellow-500/10 border-yellow-500/30",
-  "水": "bg-blue-500/10 border-blue-500/30",
-};
-
-function PillarCard({
-  label,
-  gan,
-  zhi,
-}: {
-  label: string;
-  gan: string;
-  zhi: string;
-}) {
+function PillarCard({ label, gan, zhi }: { label: string; gan: string; zhi: string }) {
   return (
     <div className="rounded-xl border border-border bg-bg-input p-3 text-center">
       <div className="mb-2 text-xs text-text-muted">{label}</div>
-      <div className="space-y-1">
-        <div className="text-2xl font-bold text-text-primary">{gan}</div>
-        <div className="text-2xl font-bold text-text-primary">{zhi}</div>
+      <div className="text-2xl font-bold text-text-primary">{gan}</div>
+      <div className="text-2xl font-bold text-text-primary">{zhi}</div>
+    </div>
+  );
+}
+
+function NameCard({ suggestion, surname, index }: { suggestion: NameSuggestionV2; surname: string; index: number }) {
+  const [copied, setCopied] = useState(false);
+  const copyName = () => { navigator.clipboard.writeText(suggestion.fullName); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  return (
+    <div className="rounded-xl border border-gold/20 bg-bg-input p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-gold">{surname}</span>
+          <span className="text-2xl font-bold text-text-primary">{suggestion.name}</span>
+          {index === 0 && <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] text-green-400">推荐</span>}
+        </div>
+        <button onClick={copyName} className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-text-muted hover:border-gold/30 hover:text-gold">
+          {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+        </button>
+      </div>
+      <div className="space-y-2.5 text-xs">
+        <div className="flex gap-2">
+          <span className="flex w-16 flex-shrink-0 items-center gap-1 text-text-muted"><BookOpen className="h-3 w-3" /> 字义</span>
+          <span className="text-text-secondary">{suggestion.meaning}</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="flex w-16 flex-shrink-0 items-center gap-1 text-text-muted"><Palette className="h-3 w-3" /> 五行</span>
+          <span className="text-text-secondary">{suggestion.wuXing.split("+").map((w, i) => (<span key={i} className={`mr-1 rounded border px-1.5 py-0.5 ${wuXingBg[w]} ${wuXingColors[w]}`}>{w}</span>))}</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="flex w-16 flex-shrink-0 items-center gap-1 text-text-muted"><Music className="h-3 w-3" /> 音韵</span>
+          <span className="text-text-secondary">{suggestion.pinyin} · {suggestion.rhythm}</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="flex w-16 flex-shrink-0 items-center gap-1 text-text-muted"><PenTool className="h-3 w-3" /> 笔画</span>
+          <span className="text-text-secondary">{suggestion.strokes.c1}+{suggestion.strokes.c2} = <span className="font-bold text-gold">{suggestion.strokes.total}</span> 画</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="flex w-16 flex-shrink-0 items-center gap-1 text-text-muted"><FileText className="h-3 w-3" /> 典故</span>
+          <span className="italic text-text-secondary">{suggestion.source}</span>
+        </div>
       </div>
     </div>
   );
@@ -54,204 +67,66 @@ export default function BaziPage() {
   const [day, setDay] = useState(31);
   const [hour, setHour] = useState(10);
   const [minute, setMinute] = useState(30);
-  const [secondChar, setSecondChar] = useState("");
-  const [thirdChar, setThirdChar] = useState("");
-
   const [baziResult, setBaziResult] = useState<BaziResult | null>(null);
-  const [nameSuggestions, setNameSuggestions] = useState<NameSuggestion[]>([]);
+  const [nameSuggestions, setNameSuggestions] = useState<NameSuggestionV2[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
+  const [showPay, setShowPay] = useState(false);
 
   const calculate = () => {
-    setIsCalculating(true);
-    setBaziResult(null);
-    setNameSuggestions([]);
-
+    setIsCalculating(true); setBaziResult(null); setNameSuggestions([]); setUnlocked(false);
     setTimeout(() => {
       const result = calculateBazi(year, month, day, hour, minute);
       setBaziResult(result);
-
-      const suggestions = generateNameSuggestions(
-        surname,
-        gender,
-        result.wuXingAnalysis.missing,
-        result.wuXingAnalysis.weak,
-        secondChar,
-        thirdChar
-      );
+      const suggestions = generateNameSuggestionsV2(surname, gender, result.wuXingAnalysis.missing, result.wuXingAnalysis.weak);
       setNameSuggestions(suggestions);
       setIsCalculating(false);
     }, 1000);
   };
 
-  const copyName = (name: string, idx: number) => {
-    const fullName = surname + name;
-    navigator.clipboard.writeText(fullName);
-    setCopiedIdx(idx);
-    setTimeout(() => setCopiedIdx(null), 2000);
-  };
-
   return (
     <div className="page-container">
-      {/* 标题 */}
       <div className="mb-8 text-center">
         <Baby className="mx-auto mb-3 h-10 w-10 text-gold" />
         <h1 className="mb-2 text-3xl font-bold text-gold">八字起名</h1>
         <p className="text-sm text-text-secondary">古籍雅名，福泽一生</p>
-        <p className="mt-1 text-xs text-text-muted">
-          根据《子平真诠》《滴天髓》等经典排盘
-        </p>
       </div>
 
-      {/* 输入表单 */}
       <div className="card-classic mb-6 space-y-4 p-5">
-        {/* 姓名相关 */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-2 block text-xs text-text-muted">姓氏</label>
-            <input
-              value={surname}
-              onChange={(e) => setSurname(e.target.value)}
-              className="input-classic"
-              maxLength={2}
-            />
+            <input value={surname} onChange={(e) => setSurname(e.target.value)} className="input-classic" maxLength={2} />
           </div>
           <div>
             <label className="mb-2 block text-xs text-text-muted">性别</label>
-            <select
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              className="input-classic"
-            >
+            <select value={gender} onChange={(e) => setGender(e.target.value)} className="input-classic">
               <option value="男" className="bg-bg-card">男孩</option>
               <option value="女" className="bg-bg-card">女孩</option>
             </select>
           </div>
         </div>
-
-        {/* 出生日期时间 */}
         <div>
-          <label className="mb-2 block text-xs text-text-muted">
-            出生日期时间（农历/公历均按公历输入）
-          </label>
+          <label className="mb-2 block text-xs text-text-muted">出生日期时间</label>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div>
-              <input
-                type="number"
-                value={year}
-                onChange={(e) => setYear(parseInt(e.target.value) || 2000)}
-                placeholder="年"
-                className="input-classic"
-              />
-            </div>
-            <div>
-              <input
-                type="number"
-                value={month}
-                onChange={(e) =>
-                  setMonth(Math.min(12, Math.max(1, parseInt(e.target.value) || 1)))
-                }
-                placeholder="月"
-                className="input-classic"
-                min={1}
-                max={12}
-              />
-            </div>
-            <div>
-              <input
-                type="number"
-                value={day}
-                onChange={(e) =>
-                  setDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))
-                }
-                placeholder="日"
-                className="input-classic"
-                min={1}
-                max={31}
-              />
-            </div>
+            <input type="number" value={year} onChange={(e) => setYear(parseInt(e.target.value) || 2000)} className="input-classic" />
+            <input type="number" value={month} onChange={(e) => setMonth(Math.min(12, Math.max(1, parseInt(e.target.value) || 1)))} className="input-classic" min={1} max={12} />
+            <input type="number" value={day} onChange={(e) => setDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))} className="input-classic" min={1} max={31} />
             <div className="grid grid-cols-2 gap-2">
-              <input
-                type="number"
-                value={hour}
-                onChange={(e) =>
-                  setHour(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))
-                }
-                placeholder="时"
-                className="input-classic"
-                min={0}
-                max={23}
-              />
-              <input
-                type="number"
-                value={minute}
-                onChange={(e) =>
-                  setMinute(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))
-                }
-                placeholder="分"
-                className="input-classic"
-                min={0}
-                max={59}
-              />
+              <input type="number" value={hour} onChange={(e) => setHour(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))} className="input-classic" min={0} max={23} />
+              <input type="number" value={minute} onChange={(e) => setMinute(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))} className="input-classic" min={0} max={59} />
             </div>
           </div>
         </div>
-
-        {/* 指定用字 */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-2 block text-xs text-text-muted">
-              第二字（可选）
-            </label>
-            <input
-              value={secondChar}
-              onChange={(e) => setSecondChar(e.target.value)}
-              placeholder="例如：泽"
-              className="input-classic"
-              maxLength={1}
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-xs text-text-muted">
-              第三字（可选）
-            </label>
-            <input
-              value={thirdChar}
-              onChange={(e) => setThirdChar(e.target.value)}
-              placeholder="例如：轩"
-              className="input-classic"
-              maxLength={1}
-            />
-          </div>
-        </div>
-
-        <button
-          onClick={calculate}
-          disabled={isCalculating}
-          className="btn-primary flex w-full items-center justify-center gap-2"
-        >
-          {isCalculating ? (
-            <>
-              <Sparkles className="h-5 w-5 animate-spin" />
-              排盘计算中...
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-5 w-5" />
-              排八字 + 为宝宝起名
-            </>
-          )}
+        <button onClick={calculate} disabled={isCalculating} className="btn-primary flex w-full items-center justify-center gap-2">
+          {isCalculating ? (<><Sparkles className="h-5 w-5 animate-spin" />排盘计算中...</>) : (<><Sparkles className="h-5 w-5" />排八字 + 为宝宝起名</>)}
         </button>
       </div>
 
-      {/* 八字结果 */}
       {baziResult && (
         <div className="animate-fade-in-up space-y-4">
-          {/* 四柱排盘 */}
           <div className="card-classic p-5">
-            <h2 className="mb-4 text-center text-sm font-bold text-gold">
-              ✦ 四柱八字 ✦
-            </h2>
+            <h2 className="mb-4 text-center text-sm font-bold text-gold">✦ 四柱八字 ✦</h2>
             <div className="grid grid-cols-4 gap-3">
               <PillarCard label="年柱" gan={baziResult.year.gan} zhi={baziResult.year.zhi} />
               <PillarCard label="月柱" gan={baziResult.month.gan} zhi={baziResult.month.zhi} />
@@ -264,7 +139,6 @@ export default function BaziPage() {
             </div>
           </div>
 
-          {/* 五行分析 */}
           <div className="card-classic p-5">
             <h2 className="mb-4 text-sm font-bold text-gold">五行分布</h2>
             <div className="mb-4 grid grid-cols-5 gap-2">
@@ -275,87 +149,60 @@ export default function BaziPage() {
                 return (
                   <div key={element} className="flex flex-col items-center">
                     <div className="relative flex h-24 w-full items-end justify-center">
-                      <div
-                        className={`w-full rounded-t border ${
-                          wuXingBg[element]
-                        } transition-all`}
-                        style={{ height: `${Math.max(height, 10)}%` }}
-                      />
-                      <span className="absolute top-1 text-sm font-bold text-text-primary">
-                        {count}
-                      </span>
+                      <div className={`w-full rounded-t border ${wuXingBg[element]} transition-all`} style={{ height: `${Math.max(height, 10)}%` }} />
+                      <span className="absolute top-1 text-sm font-bold text-text-primary">{count}</span>
                     </div>
-                    <div className={`mt-1 text-sm font-medium ${wuXingColors[element]}`}>
-                      {element}
-                    </div>
+                    <div className={`mt-1 text-sm font-medium ${wuXingColors[element]}`}>{element}</div>
                   </div>
                 );
               })}
             </div>
-            <div className="rounded-lg bg-bg-input p-3 text-sm leading-relaxed text-text-secondary">
-              {baziResult.wuXingAnalysis.summary}
-            </div>
+            <div className="rounded-lg bg-bg-input p-3 text-sm leading-relaxed text-text-secondary">{baziResult.wuXingAnalysis.summary}</div>
           </div>
 
-          {/* 起名建议 */}
           {nameSuggestions.length > 0 && (
             <div className="card-classic p-5">
-              <h2 className="mb-4 text-sm font-bold text-gold">
-                ✦ 起名建议（共 {nameSuggestions.length} 个）✦
-              </h2>
+              <h2 className="mb-4 text-sm font-bold text-gold">✦ 起名建议（免费 1 个 · 付费 15 个）✦</h2>
               <div className="space-y-3">
-                {nameSuggestions.map((suggestion, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl border border-border bg-bg-input p-4"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl font-bold text-gold">
-                            {surname}
-                          </span>
-                          <span className="text-2xl font-bold text-text-primary">
-                            {suggestion.name}
-                          </span>
-                          <span
-                            className={`rounded px-1.5 py-0.5 text-[10px] ${
-                              wuXingBg[suggestion.wuXing]
-                            } ${wuXingColors[suggestion.wuXing]}`}
-                          >
-                            {suggestion.wuXing}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-text-secondary">
-                          {suggestion.meaning}
-                        </p>
-                        <p className="mt-1 text-[11px] italic text-text-muted">
-                          出处：{suggestion.source}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => copyName(suggestion.name, idx)}
-                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-border text-text-muted transition-colors hover:border-gold/30 hover:text-gold"
-                      >
-                        {copiedIdx === idx ? (
-                          <Check className="h-4 w-4 text-green-400" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
+                <NameCard suggestion={nameSuggestions[0]} surname={surname} index={0} />
+                {!unlocked && (
+                  <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 text-center">
+                    <Lock className="mx-auto mb-2 h-8 w-8 text-gold" />
+                    <p className="mb-1 text-sm font-medium text-text-primary">还有 15 个精选好名</p>
+                    <p className="mb-3 text-xs text-text-muted">每个名字都包含字义、五行、音韵、笔画、典故详细分析</p>
+                    <button onClick={() => setShowPay(true)} className="btn-primary w-full">
+                      <span className="flex items-center justify-center gap-2"><Sparkles className="h-4 w-4" />¥29.9 解锁全部 15 个名字</span>
+                    </button>
                   </div>
-                ))}
+                )}
+                {unlocked && nameSuggestions.slice(1).map((s, i) => (<NameCard key={i} suggestion={s} surname={surname} index={i + 1} />))}
               </div>
             </div>
           )}
         </div>
       )}
 
+      {showPay && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+          <div className="animate-fade-in-up relative w-full max-w-sm rounded-2xl border border-gold/20 bg-bg-card p-6 text-center">
+            <button onClick={() => setShowPay(false)} className="absolute right-3 top-3 text-text-muted hover:text-text-primary"><X className="h-5 w-5" /></button>
+            <Lock className="mx-auto mb-3 h-10 w-10 text-gold" />
+            <h3 className="mb-2 text-xl font-bold text-gold">解锁全部名字</h3>
+            <p className="mb-4 text-sm text-text-secondary">查看 15 个精选好名的完整分析</p>
+            <div className="mx-auto mb-4 h-48 w-48 overflow-hidden rounded-xl border border-border bg-white p-2">
+              <img src="/alipay-qr.png" alt="收款码" className="h-full w-full object-contain" onError={(e) => { const t = e.currentTarget; t.style.display = "none"; if (t.parentElement) { t.parentElement.innerHTML = '<div class="flex h-full w-full items-center justify-center text-gray-400 text-xs">收款码加载中</div>'; } }} />
+            </div>
+            <p className="mb-2 text-sm text-blue-400">支付宝扫码付款 ¥29.9</p>
+            <button onClick={() => { setUnlocked(true); setShowPay(false); }} className="btn-primary w-full">
+              <span className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />我已完成付款</span>
+            </button>
+            <button onClick={() => setShowPay(false)} className="mt-2 w-full rounded-xl border border-border py-2 text-sm text-text-secondary">取消</button>
+          </div>
+        </div>
+      )}
+
       <div className="mt-6 text-center">
-        <p className="text-xs text-text-muted">
-          仅供参考娱乐 · 正式起名建议咨询专业命理师
-        </p>
+        <p className="text-xs text-text-muted">仅供参考娱乐 · 正式起名建议咨询专业命理师</p>
       </div>
     </div>
   );
