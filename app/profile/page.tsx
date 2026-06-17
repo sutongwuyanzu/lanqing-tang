@@ -3,22 +3,70 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ScrollText, MoonStar, Flame, LogOut, ChevronRight, Sparkles, Gift } from "lucide-react";
+import { ScrollText, MoonStar, Flame, LogOut, ChevronRight, Sparkles, Gift, UserCircle, LogIn } from "lucide-react";
 import { getCurrentUser, logout, UserRecord } from "@/lib/user-system";
 import { ShareButton } from "@/components/ShareButton";
 
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<UserRecord | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const u = getCurrentUser();
-    if (!u) { router.push("/login"); return; }
     setUser(u);
-  }, [router]);
+    setLoading(false);
+  }, []);
 
   const handleLogout = () => { logout(); router.push("/"); };
-  if (!user) return null;
+
+  // 加载中
+  if (loading) {
+    return (
+      <div className="page-container flex items-center justify-center" style={{ minHeight: "60vh" }}>
+        <div className="text-center">
+          <Sparkles className="mx-auto mb-3 h-8 w-8 animate-pulse text-gold" />
+          <p className="text-sm text-text-muted">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 未登录：显示登录引导
+  if (!user) {
+    return (
+      <div className="page-container">
+        <div className="mx-auto max-w-md">
+          <div className="card-classic overflow-hidden">
+            <div className="bg-gradient-to-br from-gold/20 to-transparent p-8 text-center">
+              <UserCircle className="mx-auto mb-4 h-20 w-20 text-gold/40" />
+              <h1 className="mb-2 text-2xl font-bold text-gold">个人中心</h1>
+              <p className="mb-6 text-sm text-text-secondary">登录后可查看您的吉祥号、福报值和所有记录</p>
+              <Link href="/login" className="btn-primary inline-flex items-center gap-2">
+                <LogIn className="h-4 w-4" />手机号登录
+              </Link>
+            </div>
+            <div className="border-t border-border p-5">
+              <h2 className="mb-3 text-sm font-bold text-text-primary">登录后可以：</h2>
+              <div className="space-y-3">
+                {[
+                  { icon: "🎁", text: "获得专属吉祥号ID" },
+                  { icon: "✨", text: "积累福报值，分享给朋友" },
+                  { icon: "📜", text: "保存灵签、解梦、祈福记录" },
+                  { icon: "🔔", text: "分享链接可刷新免费灵签次数" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-lg">{item.icon}</span>
+                    <span className="text-sm text-text-secondary">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">

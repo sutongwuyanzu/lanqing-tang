@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UserCircle } from "lucide-react";
 
 const navItems = [
   { href: "/lingqian", label: "灵签" },
@@ -39,6 +40,17 @@ export function Navbar() {
               {item.label}
             </Link>
           ))}
+          <Link
+            href="/profile"
+            className={`ml-2 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              pathname === "/profile"
+                ? "bg-gold/10 text-gold"
+                : "text-text-secondary hover:bg-bg-card hover:text-text-primary"
+            }`}
+          >
+            <UserCircle className="h-4 w-4" />
+            个人中心
+          </Link>
         </div>
       </div>
     </nav>

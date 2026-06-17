@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -7,8 +8,9 @@ import {
   Flame,
   CalendarDays,
   ScrollText,
-  User,
+  UserCircle,
   MoreHorizontal,
+  X,
 } from "lucide-react";
 
 const bottomNavItems = [
@@ -19,15 +21,41 @@ const bottomNavItems = [
 ];
 
 const moreNavItems = [
-  { href: "/bazi", label: "八字起名" },
-  { href: "/profile", label: "个人中心" },
+  { href: "/bazi", label: "八字起名", icon: "👶" },
+  { href: "/profile", label: "个人中心", icon: "👤" },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [showMore, setShowMore] = useState(false);
 
   return (
     <>
+      {/* Overlay */}
+      {showMore && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setShowMore(false)}
+        />
+      )}
+
+      {/* More menu popup */}
+      {showMore && (
+        <div className="fixed bottom-16 right-3 z-50 w-40 rounded-xl border border-border bg-bg-elevated p-2 shadow-2xl md:hidden animate-fade-in-up">
+          {moreNavItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setShowMore(false)}
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-text-secondary transition-colors hover:bg-bg-card hover:text-text-primary"
+            >
+              <span className="text-base">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg-primary/95 backdrop-blur-lg md:hidden">
         <div className="flex items-center justify-around px-2 py-1">
@@ -48,24 +76,16 @@ export function BottomNav() {
             );
           })}
 
-          {/* More menu */}
-          <div className="group relative">
-            <button className="flex flex-col items-center gap-0.5 rounded-lg px-3 py-2 text-text-muted transition-colors">
-              <MoreHorizontal className="h-5 w-5" />
-              <span className="text-[10px] font-medium">更多</span>
-            </button>
-            <div className="invisible absolute -top-full right-0 mb-2 w-32 rounded-lg border border-border bg-bg-elevated p-2 opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
-              {moreNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block rounded-md px-3 py-2 text-sm text-text-secondary hover:bg-bg-card hover:text-text-primary"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </div>
+          {/* More button - click to toggle */}
+          <button
+            onClick={() => setShowMore(!showMore)}
+            className={`flex flex-col items-center gap-0.5 rounded-lg px-3 py-2 transition-colors ${
+              showMore ? "text-gold" : "text-text-muted"
+            }`}
+          >
+            {showMore ? <X className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}
+            <span className="text-[10px] font-medium">更多</span>
+          </button>
         </div>
         {/* Safe area for iPhone */}
         <div className="h-[env(safe-area-inset-bottom)]" />
