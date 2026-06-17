@@ -4,6 +4,7 @@ import { useState } from "react";
 import { calculateBazi, BaziResult } from "@/lib/bazi-utils";
 import { generateNameSuggestionsV2, NameSuggestionV2 } from "@/lib/naming-data";
 import { Baby, Sparkles, Copy, Check, Lock, BookOpen, Palette, Music, FileText, PenTool, X } from "lucide-react";
+import { ShareButton } from "@/components/ShareButton";
 
 const wuXingColors: Record<string, string> = { "木": "text-green-400", "火": "text-red-400", "土": "text-yellow-600", "金": "text-yellow-300", "水": "text-blue-400" };
 const wuXingBg: Record<string, string> = { "木": "bg-green-500/10 border-green-500/30", "火": "bg-red-500/10 border-red-500/30", "土": "bg-yellow-700/10 border-yellow-700/30", "金": "bg-yellow-500/10 border-yellow-500/30", "水": "bg-blue-500/10 border-blue-500/30" };
@@ -201,6 +202,9 @@ export default function BaziPage() {
         </div>
       )}
 
+      <div className="mt-4 flex justify-center">
+        <ShareButton />
+      </div>
       <div className="mt-6 text-center">
         <p className="text-xs text-text-muted">仅供参考娱乐 · 正式起名建议咨询专业命理师</p>
       </div>

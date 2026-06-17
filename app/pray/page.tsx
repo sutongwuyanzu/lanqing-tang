@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Flame, Check, Clock, X } from "lucide-react";
+import { ShareButton } from "@/components/ShareButton";
 
 interface LampType { id: string; name: string; desc: string; color: string; }
 interface Duration { id: string; label: string; price: number; }

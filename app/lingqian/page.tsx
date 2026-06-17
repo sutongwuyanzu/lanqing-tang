@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { allLots, Lot } from "@/lib/lots-data";
 import { Sparkles, ChevronDown, Trash2, History, X, Lock, Check } from "lucide-react";
+import { ShareButton } from "@/components/ShareButton";
 
 const FREE_DAILY = 2;
 const EXTRA_PRICE = 3.9;
@@ -237,6 +238,9 @@ export default function LingqianPage() {
         </div>
       )}
 
+      <div className="mt-4 flex justify-center">
+        <ShareButton label="分享得福报，刷新灵签次数" />
+      </div>
       <div className="mt-6 text-center">
         <p className="text-xs text-text-muted">每日免费 {FREE_DAILY} 次 · 仅供娱乐参考</p>
       </div>

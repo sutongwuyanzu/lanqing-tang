@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
+import { MusicPlayer } from "@/components/MusicPlayer";
 import { BottomNav } from "@/components/BottomNav";
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen font-serif antialiased">
         <Navbar />
+        <MusicPlayer />
         <main className="pb-20 md:pb-8">{children}</main>
         <BottomNav />
       </body>
