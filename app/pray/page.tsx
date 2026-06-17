@@ -9,13 +9,18 @@ interface Duration { id: string; label: string; price: number; }
 interface WishItem { id: number; name: string; maskedName: string; lamp: string; wish: string; time: string; }
 
 const lampTypes: LampType[] = [
+  // 第一行：平安守护
   { id: "pingan", name: "平安灯", desc: "祈愿出入平安、家宅安宁", color: "#C45C5C" },
   { id: "qingxin", name: "清心灯", desc: "祈愿身心安宁、烦恼消解", color: "#6B8E5A" },
   { id: "changshou", name: "长寿灯", desc: "祈愿身体健康、福寿绵长", color: "#D4AF77" },
+  // 第二行：福运亨通
   { id: "caiyuan", name: "财源灯", desc: "祈愿财源广进、事业顺遂", color: "#C5A55A" },
   { id: "yuanman", name: "姻缘灯", desc: "祈愿姻缘美满、感情和谐", color: "#C4698A" },
   { id: "xueye", name: "学业灯", desc: "祈愿学业进步、金榜题名", color: "#5A8EC4" },
+  // 第三行：贵人解厄
   { id: "shiye", name: "事业灯", desc: "祈愿事业高升、前途光明", color: "#8B6914" },
+  { id: "guiren", name: "贵人灯", desc: "祈愿贵人相助、人缘通达", color: "#E8873A" },
+  { id: "jiee", name: "解厄灯", desc: "祈愿破除阻滞、逢凶化吉", color: "#2C4A6E" },
 ];
 
 const durations: Duration[] = [
@@ -43,13 +48,15 @@ const demoWishes: WishItem[] = [
   { id: 5, name: "刘婷婷", maskedName: "刘*婷", lamp: "学业灯", wish: "金榜题名", time: "2天前" },
   { id: 6, name: "赵建国", maskedName: "赵*国", lamp: "清心灯", wish: "身心安宁无忧", time: "2天前" },
   { id: 7, name: "孙丽", maskedName: "孙*", lamp: "平安灯", wish: "出入平安吉祥", time: "3天前" },
-  { id: 8, name: "周晓东", maskedName: "周*东", lamp: "长寿灯", wish: "长辈健康长寿", time: "3天前" },
+  { id: 8, name: "周晓东", maskedName: "周*东", lamp: "事业灯", wish: "升职加薪", time: "3天前" },
+  { id: 9, name: "吴芳芳", maskedName: "吴*芳", lamp: "贵人灯", wish: "贵人引路逢凶化吉", time: "4天前" },
+  { id: 10, name: "郑大明", maskedName: "郑*明", lamp: "解厄灯", wish: "破除困局诸事顺遂", time: "4天前" },
 ];
 
 const lampColorMap: Record<string, string> = {
   "平安灯": "#C45C5C", "清心灯": "#6B8E5A", "长寿灯": "#D4AF77",
   "财源灯": "#C5A55A", "姻缘灯": "#C4698A", "学业灯": "#5A8EC4",
-  "事业灯": "#8B6914",
+  "事业灯": "#8B6914", "贵人灯": "#E8873A", "解厄灯": "#2C4A6E",
 };
 
 type Step = "form" | "paying" | "success";
@@ -160,20 +167,20 @@ export default function PrayPage() {
 
           <div className="card-classic p-5">
             <h2 className="mb-4 text-sm font-bold text-text-primary">选一盏灯</h2>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-3 gap-3">
               {lampTypes.map((lamp) => {
                 const isSelected = selectedLamp === lamp.id;
                 return (
-                  <button key={lamp.id} onClick={() => setSelectedLamp(lamp.id)} className={`relative rounded-xl border p-4 text-center transition-all ${isSelected ? "border-gold bg-gold/10" : "border-border bg-bg-input hover:border-border-light"}`}>
+                  <button key={lamp.id} onClick={() => setSelectedLamp(lamp.id)} className={`relative rounded-xl border p-3 text-center transition-all ${isSelected ? "border-gold bg-gold/10" : "border-border bg-bg-input hover:border-border-light"}`}>
                     <div className="mb-2 flex justify-center">
                       <div className="relative">
-                        <div className="h-8 w-8 rounded-full opacity-30 blur-md" style={{ backgroundColor: lamp.color }} />
-                        <Flame className={`absolute inset-0 m-auto h-5 w-5 ${isSelected ? "animate-flicker" : ""}`} style={{ color: lamp.color }} />
+                        <div className="h-7 w-7 rounded-full opacity-30 blur-md" style={{ backgroundColor: lamp.color }} />
+                        <Flame className={`absolute inset-0 m-auto h-4 w-4 ${isSelected ? "animate-flicker" : ""}`} style={{ color: lamp.color }} />
                       </div>
                     </div>
-                    <div className="text-sm font-medium text-text-primary">{lamp.name}</div>
+                    <div className="text-xs font-medium text-text-primary">{lamp.name}</div>
                     <div className="mt-1 text-[10px] leading-tight text-text-muted">{lamp.desc}</div>
-                    {isSelected && <div className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-gold"><Check className="h-2.5 w-2.5 text-bg-primary" /></div>}
+                    {isSelected && <div className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-gold"><Check className="h-2.5 w-2.5 text-bg-primary" /></div>}
                   </button>
                 );
               })}
