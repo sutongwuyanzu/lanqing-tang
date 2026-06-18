@@ -5,8 +5,9 @@ import { calculateBazi, BaziResult } from "@/lib/bazi-utils";
 import { generateNameSuggestionsV2, NameSuggestionV2 } from "@/lib/naming-data";
 import { Baby, Sparkles, Copy, Check, Lock, BookOpen, Palette, Music, FileText, PenTool, X } from "lucide-react";
 import { ShareButton } from "@/components/ShareButton";
+import { PayDialog } from "@/components/PayDialog";
 import { getPrice, PRODUCT_KEYS, DEFAULT_PRICES } from "@/lib/pricing";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { insertOrder } from "@/lib/payment";
 
 const UNLOCK_PRICE = DEFAULT_PRICES[PRODUCT_KEYS.NAMING_UNLOCK]; // 降级默认价，运行时再读动态价
 
@@ -193,43 +194,25 @@ export default function BaziPage() {
       )}
 
       {showPay && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-          <div className="animate-fade-in-up relative w-full max-w-sm rounded-2xl border border-gold/20 bg-bg-card p-6 text-center">
-            <button onClick={() => setShowPay(false)} className="absolute right-3 top-3 text-text-muted hover:text-text-primary"><X className="h-5 w-5" /></button>
-            <Lock className="mx-auto mb-3 h-10 w-10 text-gold" />
-            <h3 className="mb-2 text-xl font-bold text-gold">解锁全部名字</h3>
-            <p className="mb-4 text-sm text-text-secondary">查看 15 个精选好名的完整分析</p>
-            <div className="mx-auto mb-4 h-48 w-48 overflow-hidden rounded-xl border border-border bg-white p-2">
-              <img src="/alipay-qr.png" alt="收款码" className="h-full w-full object-contain" onError={(e) => { const t = e.currentTarget; t.style.display = "none"; if (t.parentElement) { t.parentElement.innerHTML = '<div class="flex h-full w-full items-center justify-center text-gray-400 text-xs">收款码加载中</div>'; } }} />
-            </div>
-            <p className="mb-2 text-sm text-blue-400">支付宝扫码付款 ¥{unlockPrice}</p>
-            <button onClick={() => {
-              // 写订单（失败不阻塞解锁）
-              if (isSupabaseConfigured) {
-                supabase
-                  .from("orders")
-                  .insert({
-                    order_no: `N${Date.now()}`,
-                    type: "naming",
-                    product_key: PRODUCT_KEYS.NAMING_UNLOCK,
-                    product_name: "起名解锁全部",
-                    amount: unlockPrice,
-                    customer_name: surname,
-                    detail: { surname, gender, year, month, day, hour, minute },
-                    status: "paid",
-                  })
-                  .then(({ error }) => {
-                    if (error) console.warn("[order] naming insert failed:", error.message);
-                  });
-              }
-              setUnlocked(true);
-              setShowPay(false);
-            }} className="btn-primary w-full">
-              <span className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />我已完成付款</span>
-            </button>
-            <button onClick={() => setShowPay(false)} className="mt-2 w-full rounded-xl border border-border py-2 text-sm text-text-secondary">取消</button>
-          </div>
-        </div>
+        <PayDialog
+          open={showPay}
+          onClose={() => setShowPay(false)}
+          title="解锁全部名字"
+          description="查看 15 个精选好名的完整分析"
+          amount={unlockPrice}
+          onPaid={() => {
+            insertOrder({
+              type: "naming",
+              productKey: PRODUCT_KEYS.NAMING_UNLOCK,
+              productName: "起名解锁全部",
+              amount: unlockPrice,
+              customerName: surname,
+              detail: { surname, gender, year, month, day, hour, minute },
+            });
+            setUnlocked(true);
+            setShowPay(false);
+          }}
+        />
       )}
 
       <div className="mt-4 flex justify-center">

@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { allLots, Lot } from "@/lib/lots-data";
 import { Sparkles, ChevronDown, Trash2, History, X, Lock, Check } from "lucide-react";
 import { ShareButton } from "@/components/ShareButton";
+import { PayDialog } from "@/components/PayDialog";
 import { getPrice, PRODUCT_KEYS, DEFAULT_PRICES } from "@/lib/pricing";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { insertOrder } from "@/lib/payment";
 
 const FREE_DAILY = 2;
 const EXTRA_PRICE = DEFAULT_PRICES[PRODUCT_KEYS.LOT_EXTRA]; // 降级默认价，运行时再读动态价
@@ -86,23 +87,13 @@ export default function LingqianPage() {
 
   const handlePaid = () => {
     setShowPay(false);
-    // 写订单（失败不阻塞抽签）
-    if (isSupabaseConfigured) {
-      supabase
-        .from("orders")
-        .insert({
-          order_no: `L${Date.now()}`,
-          type: "lot",
-          product_key: PRODUCT_KEYS.LOT_EXTRA,
-          product_name: "灵签加抽",
-          amount: extraPrice,
-          detail: { wish: wish || "（未填写）" },
-          status: "paid",
-        })
-        .then(({ error }) => {
-          if (error) console.warn("[order] lot insert failed:", error.message);
-        });
-    }
+    insertOrder({
+      type: "lot",
+      productKey: PRODUCT_KEYS.LOT_EXTRA,
+      productName: "灵签加抽",
+      amount: extraPrice,
+      detail: { wish: wish || "（未填写）" },
+    });
     doDraw();
   };
 
@@ -241,23 +232,14 @@ export default function LingqianPage() {
       )}
 
       {showPay && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-          <div className="animate-fade-in-up relative w-full max-w-sm rounded-2xl border border-gold/20 bg-bg-card p-6 text-center">
-            <button onClick={() => setShowPay(false)} className="absolute right-3 top-3 text-text-muted hover:text-text-primary">
-              <X className="h-5 w-5" />
-            </button>
-            <Lock className="mx-auto mb-3 h-10 w-10 text-gold" />
-            <h3 className="mb-2 text-xl font-bold text-gold">加抽灵签</h3>
-            <p className="mb-4 text-sm text-text-secondary">今日免费次数已用完，加抽一次 ¥{extraPrice}</p>
-            <div className="mx-auto mb-4 h-48 w-48 overflow-hidden rounded-xl border border-border bg-white p-2">
-              <img src="/alipay-qr.png" alt="收款码" className="h-full w-full object-contain" onError={(e) => { const t = e.currentTarget; t.style.display = "none"; if (t.parentElement) { t.parentElement.innerHTML = '<div class="flex h-full w-full items-center justify-center text-gray-400 text-xs">收款码加载中</div>'; } }} />
-            </div>
-            <p className="mb-3 text-sm text-blue-400">支付宝扫码付款 ¥{extraPrice}</p>
-            <button onClick={handlePaid} className="btn-primary w-full">
-              <span className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />我已完成付款</span>
-            </button>
-          </div>
-        </div>
+        <PayDialog
+          open={showPay}
+          onClose={() => setShowPay(false)}
+          title="加抽灵签"
+          description={`今日免费次数已用完，加抽一次 ¥${extraPrice}`}
+          amount={extraPrice}
+          onPaid={handlePaid}
+        />
       )}
 
       <div className="mt-4 flex justify-center">

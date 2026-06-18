@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { Flame, Check, Clock, X } from "lucide-react";
 import { ShareButton } from "@/components/ShareButton";
+import { PayDialog } from "@/components/PayDialog";
 import { getPrices, PRODUCT_KEYS, DEFAULT_PRICES } from "@/lib/pricing";
+import { insertOrder } from "@/lib/payment";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 interface LampType { id: string; name: string; desc: string; color: string; }
@@ -135,24 +137,16 @@ export default function PrayPage() {
     history.unshift({ orderId: Date.now(), name, relationship, lamp: lampName, duration: durLabel, price: amount, wish, time: new Date().toISOString() });
     localStorage.setItem("lqt_lamps_history", JSON.stringify(history));
 
-    // 写入 Supabase：订单 + 愿望（失败不阻塞）
+    // 写入 Supabase：订单（复用统一封装）+ 愿望（失败不阻塞）
+    insertOrder({
+      type: "pray",
+      productKey: selectedDurationData?.productKey || null,
+      productName: `${lampName}·${durLabel}`,
+      amount,
+      customerName: name,
+      detail: { lamp: lampName, duration: durLabel, relationship, wish: wishText },
+    });
     if (isSupabaseConfigured) {
-      const orderNo = `P${Date.now()}`;
-      supabase
-        .from("orders")
-        .insert({
-          order_no: orderNo,
-          type: "pray",
-          product_key: selectedDurationData?.productKey || null,
-          product_name: `${lampName}·${durLabel}`,
-          amount,
-          customer_name: name,
-          detail: { lamp: lampName, duration: durLabel, relationship, wish: wishText },
-          status: "paid",
-        })
-        .then(({ error }) => {
-          if (error) console.warn("[order] pray insert failed:", error.message);
-        });
       supabase
         .from("wishes")
         .insert({
@@ -267,37 +261,32 @@ export default function PrayPage() {
         </div>
       )}
 
-      {/* 支付页面 */}
+      {/* 支付页面：订单摘要 + 付款弹窗 */}
       {step === "paying" && selectedLampData && selectedDurationData && (
-        <div className="animate-fade-in space-y-4">
-          <div className="card-classic p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-sm font-medium text-gold">等待付款</span>
-              <span className="rounded-full bg-gold/10 px-3 py-1 text-xs font-medium text-gold">剩余 {formatTime(countdown)}</span>
-            </div>
-            <div className="space-y-2 border-t border-border pt-4 text-sm">
-              <div className="flex justify-between"><span className="text-text-muted">祈福对象</span><span className="text-text-primary">{name}（{relationship}）</span></div>
-              <div className="flex justify-between"><span className="text-text-muted">供奉内容</span><span className="text-text-primary">{selectedLampData.name} · {selectedDurationData.label}</span></div>
-              <div className="flex justify-between border-t border-border pt-2"><span className="text-text-muted">需付款</span><span className="text-xl font-bold text-gold">¥{selectedDurationData ? durationPrice(selectedDurationData) : 0}</span></div>
+        <>
+          <div className="animate-fade-in space-y-4">
+            <div className="card-classic p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-sm font-medium text-gold">等待付款</span>
+                <span className="rounded-full bg-gold/10 px-3 py-1 text-xs font-medium text-gold">剩余 {formatTime(countdown)}</span>
+              </div>
+              <div className="space-y-2 border-t border-border pt-4 text-sm">
+                <div className="flex justify-between"><span className="text-text-muted">祈福对象</span><span className="text-text-primary">{name}（{relationship}）</span></div>
+                <div className="flex justify-between"><span className="text-text-muted">供奉内容</span><span className="text-text-primary">{selectedLampData.name} · {selectedDurationData.label}</span></div>
+                <div className="flex justify-between border-t border-border pt-2"><span className="text-text-muted">需付款</span><span className="text-xl font-bold text-gold">¥{selectedDurationData ? durationPrice(selectedDurationData) : 0}</span></div>
+              </div>
+              <button onClick={() => { setStep("form"); setError(""); }} className="mt-4 w-full rounded-xl border border-border py-3 text-sm text-text-secondary transition-colors hover:bg-bg-elevated">取消并返回</button>
             </div>
           </div>
-          <div className="card-classic overflow-hidden">
-            <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/10 p-4 text-center">
-              <div className="mb-2 flex items-center justify-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-500 text-xs font-bold text-white">支</div>
-                <span className="text-sm font-bold text-blue-400">支付宝扫码付款</span>
-              </div>
-              <div className="mx-auto my-4 flex h-48 w-48 items-center justify-center rounded-xl bg-white p-3">
-                <img src="/alipay-qr.png" alt="支付宝收款码" className="h-full w-full object-contain" onError={(e) => { const t = e.currentTarget; t.style.display = "none"; if (t.parentElement) { t.parentElement.innerHTML = '<div class="text-gray-400 text-xs">收款码加载中</div>'; } }} />
-              </div>
-              <p className="text-sm font-bold text-blue-400">付款金额：¥{selectedDurationData ? durationPrice(selectedDurationData) : 0}</p>
-            </div>
-            <div className="space-y-2 p-4">
-              <button onClick={handlePaid} className="btn-primary w-full"><span className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />我已完成付款</span></button>
-              <button onClick={() => { setStep("form"); setError(""); }} className="w-full rounded-xl border border-border py-3 text-sm text-text-secondary">取消并返回</button>
-            </div>
-          </div>
-        </div>
+          <PayDialog
+            open={step === "paying"}
+            onClose={() => { setStep("form"); setError(""); }}
+            title={`点亮${selectedLampData.name}`}
+            description={`${selectedLampData.name} · ${selectedDurationData.label} · ${name}（${relationship}）`}
+            amount={durationPrice(selectedDurationData)}
+            onPaid={handlePaid}
+          />
+        </>
       )}
 
       {/* 成功页面 */}
