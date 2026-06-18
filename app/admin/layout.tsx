@@ -81,9 +81,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
     );
   }
 
-  // 未登录 → 跳登录
+  // 未登录 → 跳登录（必须在 effect 里跳转，render 中调 router 会崩溃黑屏）
+  useEffect(() => {
+    if (ready && !email && !isLogin) {
+      router.replace("/admin/login");
+    }
+  }, [ready, email, isLogin, router]);
+
+  // 未登录 → 渲染空（effect 已触发跳转）
   if (!email) {
-    router.replace("/admin/login");
     return null;
   }
 
