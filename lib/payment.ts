@@ -20,7 +20,7 @@ import { PRODUCT_KEYS } from "./pricing";
 // 或用任意扫码工具扫 public/alipay-qr.png 得到的链接。
 const ALIPAY_RECEIVE_URL =
   process.env.NEXT_PUBLIC_ALIPAY_QR_URL ||
-  "https://qr.alipay.com/placeholder-replace-me";
+  "https://qr.alipay.com/tsx17590cb3tpjqzral4j96";
 
 /**
  * 拼接唤起支付宝 App 收款页的 scheme 链接
