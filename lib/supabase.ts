@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -6,15 +6,40 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 // 是否已配置 Supabase（前台在未配置时降级到本地默认价/本地存储）
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// createClient 在空 URL/Key 时会抛错，静态导出预渲染阶段会执行模块顶层代码，
-// 所以未配置时给占位值，避免构建失败；运行时用 isSupabaseConfigured 守卫所有调用
-export const supabase = createClient(
-  supabaseUrl || "https://placeholder.supabase.co",
-  supabaseAnonKey || "placeholder-anon-key",
-  {
-    auth: { persistSession: true, autoRefreshToken: true },
-  }
-);
+// createClient 是 module 顶层代码，构建期和浏览器期都会执行。
+// 任何异常（无效 URL、网络、SDK 内部错）一旦抛出，整个 import 它的 chunk
+// 加载失败 → 所有引用页面（admin 全部 + 前台 pricing）整树崩溃 = 黑屏无报错。
+// 所以必须用 try/catch 兜底，失败时给一个哑 client，调用方靠 isSupabaseConfigured 守卫。
+let supabase: SupabaseClient;
+try {
+  supabase = createClient(
+    supabaseUrl || "https://placeholder.supabase.co",
+    supabaseAnonKey || "placeholder-anon-key",
+    {
+      auth: { persistSession: true, autoRefreshToken: true },
+    }
+  );
+} catch {
+  // 极端情况：createClient 抛错。构造一个永不抛错的哑对象，
+  // 所有方法返回空结果，避免上层崩溃。isSupabaseConfigured 此时通常为 false。
+  supabase = {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      signInWithPassword: async () => ({ data: {}, error: { message: "Supabase 未正确初始化" } as never }),
+      signOut: async () => ({ error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } as never }),
+    },
+    from: () => ({
+      select: () => ({ data: null, error: null, limit: () => ({ data: null, error: null }) }),
+      insert: () => ({ data: null, error: null }),
+      update: () => ({ eq: () => ({ data: null, error: null }), select: () => ({ data: null, error: null }) }),
+      delete: () => ({ eq: () => ({ data: null, error: null }) }),
+      order: () => ({ data: null, error: null, range: () => ({ data: null, error: null }) }),
+      eq: () => ({ data: null, error: null, order: () => ({ data: null, error: null }) }),
+    }),
+  } as unknown as SupabaseClient;
+}
+export { supabase };
 
 // ============ 数据库行类型（对应 supabase/schema.sql） ============
 

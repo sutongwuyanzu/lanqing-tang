@@ -29,7 +29,8 @@ export default function AdminLayout({
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const isLogin = pathname === "/admin/login";
+  // 兼容有无尾斜杠：trailingSlash:true 下 pathname 可能是 /admin/login 或 /admin/login/
+  const isLogin = (pathname ?? "").replace(/\/$/, "") === "/admin/login";
 
   // ============ 所有 useEffect 必须在任何 return 之前（Hooks 规则）============
   useEffect(() => {
