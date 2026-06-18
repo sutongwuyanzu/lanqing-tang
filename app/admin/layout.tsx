@@ -31,6 +31,7 @@ export default function AdminLayout({
   const [ready, setReady] = useState(false);
   const isLogin = pathname === "/admin/login";
 
+  // ============ 所有 useEffect 必须在任何 return 之前（Hooks 规则）============
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setReady(true);
@@ -43,6 +44,15 @@ export default function AdminLayout({
     const unsub = subscribeAuth((e) => setEmail(e));
     return unsub;
   }, []);
+
+  // 未登录 → 跳登录（必须在 effect 里跳转，render 中调 router 会崩溃）
+  useEffect(() => {
+    if (isSupabaseConfigured && ready && !email && !isLogin) {
+      router.replace("/admin/login");
+    }
+  }, [ready, email, isLogin, router, isSupabaseConfigured]);
+
+  // ============ 以下都是条件 return，必须在所有 Hook 之后 ============
 
   // 未配置 Supabase 时给提示
   if (!isSupabaseConfigured) {
@@ -81,14 +91,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
     );
   }
 
-  // 未登录 → 跳登录（必须在 effect 里跳转，render 中调 router 会崩溃黑屏）
-  useEffect(() => {
-    if (ready && !email && !isLogin) {
-      router.replace("/admin/login");
-    }
-  }, [ready, email, isLogin, router]);
-
-  // 未登录 → 渲染空（effect 已触发跳转）
+  // 未登录 → 渲染空（上方 effect 已触发跳转）
   if (!email) {
     return null;
   }
