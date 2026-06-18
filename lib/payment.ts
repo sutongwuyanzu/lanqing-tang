@@ -1,13 +1,19 @@
-// 支付工具：支付宝 scheme 唤起 + 订单写入封装
+// 支付工具：支付宝 scheme 唤起 + 微信收款码引导 + 订单写入封装
 //
-// 技术原理：支付宝个人收款码内容形如 https://qr.alipay.com/xxxxx
+// 【支付宝】技术原理：个人收款码内容形如 https://qr.alipay.com/xxxxx
 // 通过 alipays:// scheme 协议可唤起支付宝 App 直接打开收款页面：
 //   alipays://platformapi/startapp?saId=10000007&qrcode=<UrlEncode(收款码链接)>
 // 用户点按钮 → 拉起支付宝 App → 显示收款码页面 → 用户输入金额付款
+//
+// 【微信】个人收款码是 wxp:// 私有协议，只能用微信"扫一扫"识别，
+// 无法像支付宝那样从外部浏览器一键唤起（微信平台有意限制）。
+// 所以微信走"长按收款码图片保存 → 微信扫一扫"路径，稳定可靠不踩风控。
+// 若需微信一键拉起，须申请微信支付商户号走官方 H5 支付（要营业执照）。
 
 import { supabase, isSupabaseConfigured, type Order } from "./supabase";
 import { PRODUCT_KEYS } from "./pricing";
 
+// ============ 支付宝配置 ============
 // 你的支付宝收款码链接（二维码扫出来的内容）。
 // 优先读环境变量，便于在 Cloudflare Pages 后台修改而无需改代码。
 // 获取方式：支付宝 App → 收付款 → 二维码收款 → 分享/保存 → 复制链接，
@@ -18,8 +24,6 @@ const ALIPAY_RECEIVE_URL =
 
 /**
  * 拼接唤起支付宝 App 收款页的 scheme 链接
- * @param amount 金额（元）。支付宝个人收款码通常需用户手动确认金额，
- *               此处 amount 主要用于记录，scheme 仍打开通用收款页
  */
 export function buildAlipayScheme(): string {
   return (
@@ -54,6 +58,22 @@ export function openAlipay(): boolean {
   } catch {
     return false;
   }
+}
+
+// ============ 微信收款码 ============
+// 微信个人收款码图片路径（放在 public/ 下，随项目部署）。
+// 支持环境变量覆盖，便于更换。
+export const WECHAT_QR_IMAGE =
+  process.env.NEXT_PUBLIC_WECHAT_QR_IMAGE || "/wechat-qr.png";
+
+/**
+ * 判断当前是否在微信内打开。
+ * - 微信内：可直接长按图片识别收款码（微信原生能力）
+ * - 微信外：引导用户保存图片后打开微信扫一扫
+ */
+export function isOpenedInWeChat(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /MicroMessenger/i.test(navigator.userAgent);
 }
 
 // ============ 订单写入封装 ============
