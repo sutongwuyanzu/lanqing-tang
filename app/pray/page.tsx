@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { Flame, Check, Clock, X } from "lucide-react";
 import { ShareButton } from "@/components/ShareButton";
+import { getPrices, PRODUCT_KEYS, DEFAULT_PRICES } from "@/lib/pricing";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 interface LampType { id: string; name: string; desc: string; color: string; }
-interface Duration { id: string; label: string; price: number; }
+interface Duration { id: string; label: string; price: number; productKey: string; }
 interface WishItem { id: number; name: string; maskedName: string; lamp: string; wish: string; time: string; }
 
 const lampTypes: LampType[] = [
@@ -24,10 +26,10 @@ const lampTypes: LampType[] = [
 ];
 
 const durations: Duration[] = [
-  { id: "month", label: "一月供奉", price: 9.9 },
-  { id: "hundred", label: "百日供奉", price: 29.9 },
-  { id: "year", label: "一年供奉", price: 99 },
-  { id: "eternal", label: "永久长明", price: 299 },
+  { id: "month", label: "一月供奉", price: DEFAULT_PRICES[PRODUCT_KEYS.PRAY_MONTH], productKey: PRODUCT_KEYS.PRAY_MONTH },
+  { id: "hundred", label: "百日供奉", price: DEFAULT_PRICES[PRODUCT_KEYS.PRAY_HUNDRED], productKey: PRODUCT_KEYS.PRAY_HUNDRED },
+  { id: "year", label: "一年供奉", price: DEFAULT_PRICES[PRODUCT_KEYS.PRAY_YEAR], productKey: PRODUCT_KEYS.PRAY_YEAR },
+  { id: "eternal", label: "永久长明", price: DEFAULT_PRICES[PRODUCT_KEYS.PRAY_ETERNAL], productKey: PRODUCT_KEYS.PRAY_ETERNAL },
 ];
 
 const relationships = ["父母", "子女", "伴侣", "自己", "长辈", "其他"];
@@ -71,14 +73,20 @@ export default function PrayPage() {
   const [step, setStep] = useState<Step>("form");
   const [countdown, setCountdown] = useState(300);
   const [wallWishes, setWallWishes] = useState<WishItem[]>([]);
+  const [priceMap, setPriceMap] = useState<Record<string, number>>({});
 
   const selectedLampData = lampTypes.find((l) => l.id === selectedLamp);
   const selectedDurationData = durations.find((d) => d.id === selectedDuration);
+  // 动态价格覆盖（未取到时回落到默认价）
+  const durationPrice = (d: Duration) =>
+    priceMap[d.productKey] ?? d.price;
 
   useEffect(() => {
     // 加载祈愿墙：模拟数据 + 用户自己的
     const userWishes = JSON.parse(localStorage.getItem("lqt_wall_wishes") || "[]");
     setWallWishes([...userWishes, ...demoWishes]);
+    // 批量读点灯价格
+    getPrices(durations.map((d) => d.productKey)).then(setPriceMap);
   }, []);
 
   useEffect(() => {
@@ -102,13 +110,19 @@ export default function PrayPage() {
   };
 
   const handlePaid = () => {
-    // 保存到祈愿墙
+    const lampName = selectedLampData?.name || "";
+    const durLabel = selectedDurationData?.label || "";
+    const amount = selectedDurationData ? durationPrice(selectedDurationData) : 0;
+    const wishText = wish || "愿心愿成就";
+    const masked = maskName(name);
+
+    // 保存到祈愿墙（本地）
     const newItem: WishItem = {
       id: Date.now(),
       name: name,
-      maskedName: maskName(name),
-      lamp: selectedLampData?.name || "",
-      wish: wish || "愿心愿成就",
+      maskedName: masked,
+      lamp: lampName,
+      wish: wishText,
       time: "刚刚",
     };
     const userWishes = JSON.parse(localStorage.getItem("lqt_wall_wishes") || "[]");
@@ -116,10 +130,44 @@ export default function PrayPage() {
     localStorage.setItem("lqt_wall_wishes", JSON.stringify(userWishes));
     setWallWishes([newItem, ...wallWishes]);
 
-    // 保存点灯记录
+    // 保存点灯记录（本地）
     const history = JSON.parse(localStorage.getItem("lqt_lamps_history") || "[]");
-    history.unshift({ orderId: Date.now(), name, relationship, lamp: selectedLampData?.name, duration: selectedDurationData?.label, price: selectedDurationData?.price, wish, time: new Date().toISOString() });
+    history.unshift({ orderId: Date.now(), name, relationship, lamp: lampName, duration: durLabel, price: amount, wish, time: new Date().toISOString() });
     localStorage.setItem("lqt_lamps_history", JSON.stringify(history));
+
+    // 写入 Supabase：订单 + 愿望（失败不阻塞）
+    if (isSupabaseConfigured) {
+      const orderNo = `P${Date.now()}`;
+      supabase
+        .from("orders")
+        .insert({
+          order_no: orderNo,
+          type: "pray",
+          product_key: selectedDurationData?.productKey || null,
+          product_name: `${lampName}·${durLabel}`,
+          amount,
+          customer_name: name,
+          detail: { lamp: lampName, duration: durLabel, relationship, wish: wishText },
+          status: "paid",
+        })
+        .then(({ error }) => {
+          if (error) console.warn("[order] pray insert failed:", error.message);
+        });
+      supabase
+        .from("wishes")
+        .insert({
+          source: "pray",
+          customer_name: name,
+          masked_name: masked,
+          lamp: lampName,
+          content: wishText,
+          status: "pending",
+          is_public: false,
+        })
+        .then(({ error }) => {
+          if (error) console.warn("[wish] pray insert failed:", error.message);
+        });
+    }
     setStep("success");
   };
 
@@ -195,7 +243,7 @@ export default function PrayPage() {
                 return (
                   <button key={d.id} onClick={() => setSelectedDuration(d.id)} className={`rounded-xl border p-4 text-center transition-all ${isSelected ? "border-gold bg-gold/10" : "border-border bg-bg-input hover:border-border-light"}`}>
                     <div className="flex items-center justify-center gap-1 text-xs text-text-secondary"><Clock className="h-3 w-3" />{d.label}</div>
-                    <div className="mt-2 text-lg font-bold text-gold">¥{d.price}</div>
+                    <div className="mt-2 text-lg font-bold text-gold">¥{durationPrice(d)}</div>
                   </button>
                 );
               })}
@@ -210,7 +258,7 @@ export default function PrayPage() {
           <div className="flex items-center justify-between rounded-xl border border-border bg-bg-card p-4">
             <div>
               <div className="text-xs text-text-muted">需供奉</div>
-              <div className="text-2xl font-bold text-gold">¥{selectedDurationData?.price || 0}</div>
+              <div className="text-2xl font-bold text-gold">¥{selectedDurationData ? durationPrice(selectedDurationData) : 0}</div>
             </div>
             <button onClick={handleSubmit} className="btn-primary">
               <span className="flex items-center gap-2"><Flame className="h-4 w-4" />点亮此灯</span>
@@ -230,7 +278,7 @@ export default function PrayPage() {
             <div className="space-y-2 border-t border-border pt-4 text-sm">
               <div className="flex justify-between"><span className="text-text-muted">祈福对象</span><span className="text-text-primary">{name}（{relationship}）</span></div>
               <div className="flex justify-between"><span className="text-text-muted">供奉内容</span><span className="text-text-primary">{selectedLampData.name} · {selectedDurationData.label}</span></div>
-              <div className="flex justify-between border-t border-border pt-2"><span className="text-text-muted">需付款</span><span className="text-xl font-bold text-gold">¥{selectedDurationData.price}</span></div>
+              <div className="flex justify-between border-t border-border pt-2"><span className="text-text-muted">需付款</span><span className="text-xl font-bold text-gold">¥{selectedDurationData ? durationPrice(selectedDurationData) : 0}</span></div>
             </div>
           </div>
           <div className="card-classic overflow-hidden">
@@ -242,7 +290,7 @@ export default function PrayPage() {
               <div className="mx-auto my-4 flex h-48 w-48 items-center justify-center rounded-xl bg-white p-3">
                 <img src="/alipay-qr.png" alt="支付宝收款码" className="h-full w-full object-contain" onError={(e) => { const t = e.currentTarget; t.style.display = "none"; if (t.parentElement) { t.parentElement.innerHTML = '<div class="text-gray-400 text-xs">收款码加载中</div>'; } }} />
               </div>
-              <p className="text-sm font-bold text-blue-400">付款金额：¥{selectedDurationData.price}</p>
+              <p className="text-sm font-bold text-blue-400">付款金额：¥{selectedDurationData ? durationPrice(selectedDurationData) : 0}</p>
             </div>
             <div className="space-y-2 p-4">
               <button onClick={handlePaid} className="btn-primary w-full"><span className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />我已完成付款</span></button>

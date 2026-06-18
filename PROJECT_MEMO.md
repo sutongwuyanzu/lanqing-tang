@@ -33,6 +33,22 @@ Cloudflare Pages 项目设置：
 | 个人中心 | `/profile` | 功德记录 |
 | logo预览 | `/logo-preview` | 4款头像选择 |
 | 收款码预览 | `/qr-preview` | 收款码样式 |
+| **管理后台** | `/admin` | 仪表盘（订单/营收概览） |
+| **后台登录** | `/admin/login` | Supabase Auth 管理员登录 |
+| **商品价格** | `/admin/products` | 动态改价、上下架 |
+| **订单管理** | `/admin/orders` | 订单筛选、退款 |
+| **愿望审核** | `/admin/wishes` | 祈愿墙内容审核/公开 |
+
+## 后台系统（Supabase）
+
+- 静态导出站点，后台为纯客户端 + Supabase RLS 保护数据
+- 建表脚本：`supabase/schema.sql`，配置指南：`SUPABASE_SETUP.md`
+- 关键库：
+  - `lib/supabase.ts` —— 浏览器 client + 类型（Product/Order/Wish）+ `isSupabaseConfigured`
+  - `lib/pricing.ts` —— 前台统一取价（5分钟缓存+降级默认价）
+  - `lib/admin-auth.ts` —— 管理员登录（Auth + admins 白名单校验）
+- 前台三页（灵签/点灯/起名）付款时写 orders；点灯同时写 wishes
+- 未配置 Supabase 时前台降级到本地默认价、订单/愿望静默跳过，不影响体验
 
 ## 工作流程
 

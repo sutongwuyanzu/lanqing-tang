@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { Music, Volume2, VolumeX, Pause, Play } from "lucide-react";
 
 // 免费禅修音乐（来自 Pixabay Music，CC0 免版权）
@@ -12,8 +13,13 @@ export function MusicPlayer() {
   const [isMuted, setIsMuted] = useState(false);
   const [showError, setShowError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const pathname = usePathname();
+  const isAdmin = pathname?.startsWith("/admin") ?? false;
 
   useEffect(() => {
+    // 后台不播放禅修音乐
+    if (isAdmin) return;
+
     // 创建 audio 元素
     const audio = new Audio(MUSIC_URL);
     audio.loop = true;
@@ -45,7 +51,7 @@ export function MusicPlayer() {
       audio.pause();
       audioRef.current = null;
     };
-  }, []);
+  }, [isAdmin]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -65,7 +71,9 @@ export function MusicPlayer() {
 
   return (
     <>
-      {/* 右上角音乐控制按钮 */}
+      {isAdmin ? null : (
+        <>
+          {/* 右上角音乐控制按钮 */}
       <div className="fixed right-4 top-20 z-50 flex items-center gap-2 rounded-full border border-gold/20 bg-bg-primary/90 px-3 py-2 backdrop-blur-md md:top-24">
         <button
           onClick={togglePlay}
@@ -101,6 +109,8 @@ export function MusicPlayer() {
         >
           🎵 点击右上角播放禅修音乐
         </div>
+      )}
+        </>
       )}
     </>
   );

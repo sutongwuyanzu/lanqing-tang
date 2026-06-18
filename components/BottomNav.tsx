@@ -28,6 +28,7 @@ const moreNavItems = [
 export function BottomNav() {
   const pathname = usePathname();
   const [showMore, setShowMore] = useState(false);
+  if (pathname?.startsWith("/admin")) return null;
 
   return (
     <>

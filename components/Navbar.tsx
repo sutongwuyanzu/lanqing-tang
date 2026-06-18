@@ -13,6 +13,7 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname();
+  if (pathname?.startsWith("/admin")) return null;
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-bg-primary/90 backdrop-blur-md">

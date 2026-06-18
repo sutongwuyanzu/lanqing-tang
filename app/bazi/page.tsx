@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { calculateBazi, BaziResult } from "@/lib/bazi-utils";
 import { generateNameSuggestionsV2, NameSuggestionV2 } from "@/lib/naming-data";
 import { Baby, Sparkles, Copy, Check, Lock, BookOpen, Palette, Music, FileText, PenTool, X } from "lucide-react";
 import { ShareButton } from "@/components/ShareButton";
+import { getPrice, PRODUCT_KEYS, DEFAULT_PRICES } from "@/lib/pricing";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
+const UNLOCK_PRICE = DEFAULT_PRICES[PRODUCT_KEYS.NAMING_UNLOCK]; // 降级默认价，运行时再读动态价
 
 const wuXingColors: Record<string, string> = { "木": "text-green-400", "火": "text-red-400", "土": "text-yellow-600", "金": "text-yellow-300", "水": "text-blue-400" };
 const wuXingBg: Record<string, string> = { "木": "bg-green-500/10 border-green-500/30", "火": "bg-red-500/10 border-red-500/30", "土": "bg-yellow-700/10 border-yellow-700/30", "金": "bg-yellow-500/10 border-yellow-500/30", "水": "bg-blue-500/10 border-blue-500/30" };
@@ -73,6 +77,11 @@ export default function BaziPage() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [showPay, setShowPay] = useState(false);
+  const [unlockPrice, setUnlockPrice] = useState(UNLOCK_PRICE);
+
+  useEffect(() => {
+    getPrice(PRODUCT_KEYS.NAMING_UNLOCK).then(setUnlockPrice);
+  }, []);
 
   const calculate = () => {
     setIsCalculating(true); setBaziResult(null); setNameSuggestions([]); setUnlocked(false);
@@ -172,7 +181,7 @@ export default function BaziPage() {
                     <p className="mb-1 text-sm font-medium text-text-primary">还有 15 个精选好名</p>
                     <p className="mb-3 text-xs text-text-muted">每个名字都包含字义、五行、音韵、笔画、典故详细分析</p>
                     <button onClick={() => setShowPay(true)} className="btn-primary w-full">
-                      <span className="flex items-center justify-center gap-2"><Sparkles className="h-4 w-4" />¥29.9 解锁全部 15 个名字</span>
+                      <span className="flex items-center justify-center gap-2"><Sparkles className="h-4 w-4" />¥{unlockPrice} 解锁全部 15 个名字</span>
                     </button>
                   </div>
                 )}
@@ -193,8 +202,29 @@ export default function BaziPage() {
             <div className="mx-auto mb-4 h-48 w-48 overflow-hidden rounded-xl border border-border bg-white p-2">
               <img src="/alipay-qr.png" alt="收款码" className="h-full w-full object-contain" onError={(e) => { const t = e.currentTarget; t.style.display = "none"; if (t.parentElement) { t.parentElement.innerHTML = '<div class="flex h-full w-full items-center justify-center text-gray-400 text-xs">收款码加载中</div>'; } }} />
             </div>
-            <p className="mb-2 text-sm text-blue-400">支付宝扫码付款 ¥29.9</p>
-            <button onClick={() => { setUnlocked(true); setShowPay(false); }} className="btn-primary w-full">
+            <p className="mb-2 text-sm text-blue-400">支付宝扫码付款 ¥{unlockPrice}</p>
+            <button onClick={() => {
+              // 写订单（失败不阻塞解锁）
+              if (isSupabaseConfigured) {
+                supabase
+                  .from("orders")
+                  .insert({
+                    order_no: `N${Date.now()}`,
+                    type: "naming",
+                    product_key: PRODUCT_KEYS.NAMING_UNLOCK,
+                    product_name: "起名解锁全部",
+                    amount: unlockPrice,
+                    customer_name: surname,
+                    detail: { surname, gender, year, month, day, hour, minute },
+                    status: "paid",
+                  })
+                  .then(({ error }) => {
+                    if (error) console.warn("[order] naming insert failed:", error.message);
+                  });
+              }
+              setUnlocked(true);
+              setShowPay(false);
+            }} className="btn-primary w-full">
               <span className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />我已完成付款</span>
             </button>
             <button onClick={() => setShowPay(false)} className="mt-2 w-full rounded-xl border border-border py-2 text-sm text-text-secondary">取消</button>
