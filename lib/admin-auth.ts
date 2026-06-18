@@ -14,33 +14,50 @@ export async function signInAdmin(
   if (!isSupabaseConfigured) {
     return { error: "未配置 Supabase，请先按 SUPABASE_SETUP.md 完成配置" };
   }
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: error.message };
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) return { error: error.message };
 
-  // 校验管理员白名单（RLS 下，非管理员此处查不到行）
-  const { data } = await supabase.from("admins").select("email").limit(1);
-  if (!data || data.length === 0) {
-    await supabase.auth.signOut();
-    return { error: "该账号无后台管理权限" };
+    // 校验管理员白名单（RLS 下，非管理员此处查不到行）
+    const { data } = await supabase.from("admins").select("email").limit(1);
+    if (!data || data.length === 0) {
+      await supabase.auth.signOut();
+      return { error: "该账号无后台管理权限" };
+    }
+    return { error: null };
+  } catch (e) {
+    return {
+      error:
+        e instanceof Error
+          ? `登录失败：${e.message}`
+          : "登录失败，请检查网络或 Supabase 配置",
+    };
   }
-  return { error: null };
 }
 
 export async function signOutAdmin(): Promise<void> {
   await supabase.auth.signOut();
 }
 
-// 取当前登录的管理员（未登录 / 非管理员 / 未配置 都返回 null）
+// 取当前登录的管理员（未登录 / 非管理员 / 未配置 / 出错 都返回 null）
+// 任何异常都吞掉返回 null —— 调用方不能因网络/配置错误而永远卡在 loading
 export async function getCurrentAdmin(): Promise<AdminInfo | null> {
   if (!isSupabaseConfigured) return null;
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.user?.email) return null;
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user?.email) return null;
 
-  const { data } = await supabase.from("admins").select("email").limit(1);
-  if (!data || data.length === 0) return null;
-  return { email: session.user.email };
+    const { data } = await supabase.from("admins").select("email").limit(1);
+    if (!data || data.length === 0) return null;
+    return { email: session.user.email };
+  } catch {
+    return null;
+  }
 }
 
 // 订阅登录态变化（后台 layout 用来驱动路由保护）

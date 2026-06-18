@@ -37,10 +37,16 @@ export default function AdminLayout({
       setReady(true);
       return;
     }
-    getCurrentAdmin().then((a) => {
-      setEmail(a?.email ?? null);
-      setReady(true);
-    });
+    // 必须带 catch：getCurrentAdmin 内部已 try/catch 兜底 null，
+    // 但仍防御任何未预期 reject，否则 setReady 永不执行 → 永久 loading（视觉黑屏）
+    getCurrentAdmin()
+      .then((a) => {
+        setEmail(a?.email ?? null);
+      })
+      .catch(() => {
+        /* 静默：未登录或网络异常都视为未登录 */
+      })
+      .finally(() => setReady(true));
     const unsub = subscribeAuth((e) => setEmail(e));
     return unsub;
   }, []);
@@ -82,11 +88,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
     return <>{children}</>;
   }
 
-  // 等待登录态判定
+  // 等待登录态判定（用大号金色字，避免在暗背景上被误判为黑屏）
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <span className="text-text-muted">加载中…</span>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold/30 border-t-gold" />
+        <span className="text-base font-bold text-gold">加载中…</span>
       </div>
     );
   }

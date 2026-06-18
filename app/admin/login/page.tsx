@@ -14,10 +14,12 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // 已登录直接进仪表盘
-    getCurrentAdmin().then((a) => {
-      if (a) router.replace("/admin");
-    });
+    // 已登录直接进仪表盘（加 catch 防止 reject 时静默吞掉）
+    getCurrentAdmin()
+      .then((a) => {
+        if (a) router.replace("/admin");
+      })
+      .catch(() => {});
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
