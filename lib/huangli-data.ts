@@ -303,7 +303,7 @@ export interface HuangliInfo {
   ziweiHint: string;
   qimenDirection: string;
   summary: string;
-  luckLevel: "大吉" | "吉" | "中" | "小吉";
+  luckLevel: "上上" | "上吉" | "中上" | "中平" | "中下";
 }
 
 // 十二时辰
@@ -471,23 +471,26 @@ export function getHuangli(date: Date = new Date()): HuangliInfo {
   // 日五行
   const wuXingDay = tianGanWuXing[dayGan] ?? "土";
 
-  // 总评与吉凶等级
+  // 总评与吉凶等级（传统黄历五等：上上/上吉/中上/中平/中下）
   const jiShenScore = jiShen.length - xiongShen.length;
   const jcScore = jcLuck === "吉" ? 2 : jcLuck === "凶" ? -2 : 0;
   const totalScore = jiShenScore + jcScore;
-  let luckLevel: HuangliInfo["luckLevel"] = "中";
+  let luckLevel: HuangliInfo["luckLevel"] = "中平";
   let summary = "";
-  if (totalScore >= 4) {
-    luckLevel = "大吉";
-    summary = "今日吉神汇聚，宜行善积德、祈福求签，把握良机。诸事可成，福报倍增。";
-  } else if (totalScore >= 1) {
-    luckLevel = "吉";
-    summary = "今日运势平稳向好，宜进取谋事。可于吉时祈福、求签、行善，增福延寿。";
-  } else if (totalScore >= -1) {
-    luckLevel = "中";
-    summary = "今日吉凶参半，宜守常道、慎言行。择吉时而动，可保平安顺遂。";
+  if (totalScore >= 5) {
+    luckLevel = "上上";
+    summary = "今日吉神汇聚、诸事皆宜，宜行善积德、祈福求签，把握良机。福报倍增。";
+  } else if (totalScore >= 2) {
+    luckLevel = "上吉";
+    summary = "今日运势向好，宜进取谋事。可于吉时祈福、求签、行善，增福延寿。";
+  } else if (totalScore >= 0) {
+    luckLevel = "中上";
+    summary = "今日平稳向好，宜守常道、择吉而动。诸事顺遂，可保平安。";
+  } else if (totalScore >= -2) {
+    luckLevel = "中平";
+    summary = "今日吉凶参半，宜慎言行、缓谋事。择吉时而动，可免其扰。";
   } else {
-    luckLevel = "小吉";
+    luckLevel = "中下";
     summary = "今日凶神偏多，宜静守家中、诵经祈福。忌兴造动土，诸事宜缓。";
   }
 
@@ -535,14 +538,16 @@ export function getHuangli(date: Date = new Date()): HuangliInfo {
 // 吉凶等级配色（与 dream 页风格一致）
 export function getLuckLevelColor(level: HuangliInfo["luckLevel"]): string {
   switch (level) {
-    case "大吉":
+    case "上上":
       return "bg-red-500/20 text-red-400 border-red-500/30";
-    case "吉":
+    case "上吉":
       return "bg-gold/20 text-gold border-gold/30";
-    case "中":
-      return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    case "小吉":
-      return "bg-gray-500/20 text-gray-300 border-gray-500/30";
+    case "中上":
+      return "bg-amber-500/15 text-amber-300 border-amber-500/25";
+    case "中平":
+      return "bg-blue-500/15 text-blue-300 border-blue-500/25";
+    case "中下":
+      return "bg-gray-600/20 text-gray-300 border-gray-600/30";
     default:
       return "bg-gold/20 text-gold border-gold/30";
   }
@@ -560,3 +565,52 @@ export function getHourLuckColor(luck: HourLuck["luck"]): string {
       return "bg-gray-500/20 text-gray-300 border-gray-500/30";
   }
 }
+
+// ---------- 未来七日预览 ----------
+
+export interface FutureDay {
+  offset: number; // 距今日偏移天数（0=今日）
+  date: Date;
+  solarShort: string; // 如 6/21
+  weekDay: string; // 如 星期日
+  dayPillar: string;
+  jianChu: string;
+  xiu: string;
+  luckLevel: HuangliInfo["luckLevel"];
+  yiShort: string; // 宜摘要（前2项）
+  jiShort: string; // 忌摘要（前2项）
+  chong: string;
+}
+
+export function getFutureSevenDays(from: Date = new Date()): FutureDay[] {
+  const base = new Date(from);
+  base.setHours(0, 0, 0, 0);
+  const out: FutureDay[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i);
+    const full = getHuangli(d);
+    out.push({
+      offset: i,
+      date: d,
+      solarShort: `${d.getMonth() + 1}/${d.getDate()}`,
+      weekDay: `星期${weekDays[d.getDay()]}`,
+      dayPillar: full.dayPillar,
+      jianChu: full.jianChu,
+      xiu: full.xiu,
+      luckLevel: full.luckLevel,
+      yiShort: full.yi.slice(0, 2).map((y) => y.text).join("·") || "—",
+      jiShort: full.ji.slice(0, 2).map((j) => j.text).join("·") || "—",
+      chong: full.chong,
+    });
+  }
+  return out;
+}
+
+export const luckLevelOrder: HuangliInfo["luckLevel"][] = [
+  "上上",
+  "上吉",
+  "中上",
+  "中平",
+  "中下",
+];

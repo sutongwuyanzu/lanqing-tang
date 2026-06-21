@@ -24,9 +24,11 @@ import {
 } from "lucide-react";
 import {
   getHuangli,
+  getFutureSevenDays,
   getLuckLevelColor,
   getHourLuckColor,
   type HuangliInfo,
+  type FutureDay,
 } from "@/lib/huangli-data";
 import { ShareButton } from "@/components/ShareButton";
 
@@ -52,10 +54,13 @@ function InfoCell({ label, value }: { label: string; value: string }) {
 export default function HuangliPage() {
   // 日期在客户端挂载后计算，避免服务端/客户端时区差异引起 hydration 不一致
   const [info, setInfo] = useState<HuangliInfo | null>(null);
+  const [future, setFuture] = useState<FutureDay[]>([]);
   const [showAllHours, setShowAllHours] = useState(false);
 
   useEffect(() => {
-    setInfo(getHuangli(new Date()));
+    const now = new Date();
+    setInfo(getHuangli(now));
+    setFuture(getFutureSevenDays(now));
   }, []);
 
   if (!info) {
@@ -203,7 +208,7 @@ export default function HuangliPage() {
         </div>
         <div className="card-classic p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-red-400">
-            <AlertTriangle className="h-4 w-4" />凶神宜忌
+            <AlertTriangle className="h-4 w-4" />凶神宜避
           </h2>
           <div className="flex flex-wrap gap-2">
             {info.xiongShen.map((s, i) => (
@@ -271,6 +276,56 @@ export default function HuangliPage() {
             </>
           )}
         </button>
+      </div>
+
+      {/* 未来七日 */}
+      <div className="card-classic mb-4 p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-gold">
+          <CalendarDays className="h-4 w-4" />未来七日运势
+        </h2>
+        <div className="space-y-2">
+          {future.map((day) => (
+            <div
+              key={day.offset}
+              className={`flex items-center gap-3 rounded-lg border p-3 ${
+                day.offset === 0
+                  ? "border-gold/40 bg-gold/5"
+                  : "border-border bg-bg-input"
+              }`}
+            >
+              {/* 日期 */}
+              <div className="w-14 flex-shrink-0 text-center">
+                <p className="text-sm font-bold text-text-primary">{day.solarShort}</p>
+                <p className="text-[10px] text-text-muted">{day.weekDay}</p>
+              </div>
+              {/* 干支建除 */}
+              <div className="hidden w-20 flex-shrink-0 sm:block">
+                <p className="text-xs text-gold">{day.dayPillar}</p>
+                <p className="text-[10px] text-text-muted">
+                  {day.jianChu}·{day.xiu}宿
+                </p>
+              </div>
+              {/* 宜忌摘要 */}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11px] text-green-300">
+                  <span className="text-green-400">宜</span> {day.yiShort}
+                </p>
+                <p className="truncate text-[11px] text-red-300">
+                  <span className="text-red-400">忌</span> {day.jiShort}
+                </p>
+              </div>
+              {/* 吉凶等级 */}
+              <span
+                className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${getLuckLevelColor(day.luckLevel)}`}
+              >
+                {day.luckLevel}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-center text-[10px] text-text-muted">
+          等级：上上 · 上吉 · 中上 · 中平 · 中下
+        </p>
       </div>
 
       {/* 综合玄学：紫微流日 + 奇门方位 */}
