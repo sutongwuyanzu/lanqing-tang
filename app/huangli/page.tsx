@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import {
   getHuangli,
-  getFutureSevenDays,
+  getFutureDays,
   getLuckLevelColor,
   getHourLuckColor,
   type HuangliInfo,
@@ -60,7 +60,7 @@ export default function HuangliPage() {
   useEffect(() => {
     const now = new Date();
     setInfo(getHuangli(now));
-    setFuture(getFutureSevenDays(now));
+    setFuture(getFutureDays(now, 6));
   }, []);
 
   if (!info) {
@@ -278,45 +278,43 @@ export default function HuangliPage() {
         </button>
       </div>
 
-      {/* 未来七日 */}
+      {/* 近六日运势（两排各三个） */}
       <div className="card-classic mb-4 p-5">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-gold">
-          <CalendarDays className="h-4 w-4" />未来七日运势
+          <CalendarDays className="h-4 w-4" />近六日运势
         </h2>
-        <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-2.5">
           {future.map((day) => (
             <div
               key={day.offset}
-              className={`flex items-center gap-3 rounded-lg border p-3 ${
+              className={`flex flex-col rounded-lg border p-3 ${
                 day.offset === 0
-                  ? "border-gold/40 bg-gold/5"
+                  ? "border-gold/50 bg-gold/10"
                   : "border-border bg-bg-input"
               }`}
             >
-              {/* 日期 */}
-              <div className="w-14 flex-shrink-0 text-center">
-                <p className="text-sm font-bold text-text-primary">{day.solarShort}</p>
-                <p className="text-[10px] text-text-muted">{day.weekDay}</p>
+              {/* 日期 + 星期 */}
+              <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-text-primary">{day.solarShort}</p>
+                  <p className="text-[10px] text-text-muted">{day.weekDay}</p>
+                </div>
+                {day.offset === 0 && (
+                  <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[9px] text-gold">今日</span>
+                )}
               </div>
               {/* 干支建除 */}
-              <div className="hidden w-20 flex-shrink-0 sm:block">
-                <p className="text-xs text-gold">{day.dayPillar}</p>
-                <p className="text-[10px] text-text-muted">
-                  {day.jianChu}·{day.xiu}宿
-                </p>
-              </div>
-              {/* 宜忌摘要 */}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] text-green-300">
-                  <span className="text-green-400">宜</span> {day.yiShort}
-                </p>
-                <p className="truncate text-[11px] text-red-300">
-                  <span className="text-red-400">忌</span> {day.jiShort}
-                </p>
-              </div>
+              <p className="mb-2 text-[11px] text-gold">{day.dayPillar} · {day.jianChu}</p>
+              {/* 宜忌 */}
+              <p className="truncate text-[10px] text-green-300">
+                宜 {day.yiShort}
+              </p>
+              <p className="truncate text-[10px] text-red-300">
+                忌 {day.jiShort}
+              </p>
               {/* 吉凶等级 */}
               <span
-                className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${getLuckLevelColor(day.luckLevel)}`}
+                className={`mt-2 self-start rounded-full border px-2 py-0.5 text-[10px] font-medium ${getLuckLevelColor(day.luckLevel)}`}
               >
                 {day.luckLevel}
               </span>

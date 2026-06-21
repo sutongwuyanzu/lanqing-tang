@@ -583,10 +583,15 @@ export interface FutureDay {
 }
 
 export function getFutureSevenDays(from: Date = new Date()): FutureDay[] {
+  return getFutureDays(from, 7);
+}
+
+// 取若干日（含今日），用于网格展示
+export function getFutureDays(from: Date = new Date(), count: number = 6): FutureDay[] {
   const base = new Date(from);
   base.setHours(0, 0, 0, 0);
   const out: FutureDay[] = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < count; i++) {
     const d = new Date(base);
     d.setDate(base.getDate() + i);
     const full = getHuangli(d);
